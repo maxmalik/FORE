@@ -16,7 +16,7 @@ from pydantic import (
     BeforeValidator,
 )
 
-load_dotenv()
+load_dotenv(dotenv_path="../.env")
 
 client = AsyncIOMotorClient(os.environ["MONGODB_URL"])
 db = client.get_database("fore_database")

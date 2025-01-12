@@ -24,7 +24,9 @@ dist-ssr
 *.sln
 *.sw?
 
-api/.venv
-api/__pycache__
+.venv
+__pycache__
 api/scorecard.json
 planning.md
+course_names.txt
+courseApiScraper_function.zip
