@@ -1,13 +1,22 @@
-import Button from 'react-bootstrap/Button';
-import Container from 'react-bootstrap/Container';
-import Navbar from 'react-bootstrap/Navbar';
-import NavDropdown from 'react-bootstrap/NavDropdown';
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from "react";
+import Button from "react-bootstrap/Button";
+import Container from "react-bootstrap/Container";
+import Navbar from "react-bootstrap/Navbar";
+import NavDropdown from "react-bootstrap/NavDropdown";
+import { useNavigate } from "react-router-dom";
 
-import { getUserData, logout } from '../utils/users/users';
+import { getUserData, logout } from "../utils/users/users";
 
-function ForeNavbar() {
+interface ForeNavbarProps {
+  pageName: string;
+}
+
+function ForeNavbar({ pageName }: ForeNavbarProps) {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = `${pageName} - FORE!`;
+  });
 
   // If a user is logged in, save their name to display in the navbar
   const userData = getUserData();

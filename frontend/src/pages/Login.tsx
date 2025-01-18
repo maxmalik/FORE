@@ -1,19 +1,19 @@
-import * as formik from 'formik';
-import { useEffect, useState } from 'react';
-import Alert from 'react-bootstrap/Alert';
-import Button from 'react-bootstrap/Button';
-import Col from 'react-bootstrap/Col';
-import Container from 'react-bootstrap/Container';
-import Form from 'react-bootstrap/Form';
-import InputGroup from 'react-bootstrap/InputGroup';
-import Row from 'react-bootstrap/Row';
-import { useNavigate } from 'react-router-dom';
-import * as yup from 'yup';
+import * as formik from "formik";
+import { useEffect, useState } from "react";
+import Alert from "react-bootstrap/Alert";
+import Button from "react-bootstrap/Button";
+import Col from "react-bootstrap/Col";
+import Container from "react-bootstrap/Container";
+import Form from "react-bootstrap/Form";
+import InputGroup from "react-bootstrap/InputGroup";
+import Row from "react-bootstrap/Row";
+import { useNavigate } from "react-router-dom";
+import * as yup from "yup";
 
-import ForeNavbar from '../components/ForeNavbar';
-import HidePasswordButton from '../components/HidePasswordButton';
-import { callLoginApi, loginSchema, LoginUser } from '../utils/users/login';
-import { updateIfNotSpace, User } from '../utils/users/users';
+import ForeNavbar from "../components/ForeNavbar";
+import HidePasswordButton from "../components/HidePasswordButton";
+import { callLoginApi, loginSchema, LoginUser } from "../utils/users/login";
+import { updateIfNotSpace, User } from "../utils/users/users";
 
 function Login() {
   const [alertMessage, setAlertMessage] = useState("");
@@ -21,10 +21,6 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const { Formik } = formik;
   const navigate = useNavigate();
-
-  useEffect(() => {
-    document.title = "Login - FORE!";
-  });
 
   async function handleSubmit(values: LoginUser) {
     // First validate the form field values
@@ -101,7 +97,7 @@ function Login() {
 
   return (
     <>
-      <ForeNavbar />
+      <ForeNavbar pageName="Login" />
       <Container className="my-5 col-sm-7 col-md-5 col-lg-4 col-xxl-3">
         <h1 className="mb-4 text-center">Login</h1>
         <Alert

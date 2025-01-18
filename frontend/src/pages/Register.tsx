@@ -1,20 +1,24 @@
-import * as formik from 'formik';
-import { useEffect, useState } from 'react';
-import Alert from 'react-bootstrap/Alert';
-import Button from 'react-bootstrap/Button';
-import Col from 'react-bootstrap/Col';
-import Container from 'react-bootstrap/Container';
-import Form from 'react-bootstrap/Form';
-import InputGroup from 'react-bootstrap/InputGroup';
-import Row from 'react-bootstrap/Row';
-import { useNavigate } from 'react-router-dom';
-import * as yup from 'yup';
+import * as formik from "formik";
+import { useEffect, useState } from "react";
+import Alert from "react-bootstrap/Alert";
+import Button from "react-bootstrap/Button";
+import Col from "react-bootstrap/Col";
+import Container from "react-bootstrap/Container";
+import Form from "react-bootstrap/Form";
+import InputGroup from "react-bootstrap/InputGroup";
+import Row from "react-bootstrap/Row";
+import { useNavigate } from "react-router-dom";
+import * as yup from "yup";
 
-import ForeNavbar from '../components/ForeNavbar';
-import FormLabel from '../components/FormLabel';
-import HidePasswordButton from '../components/HidePasswordButton';
-import { callRegisterApi, registerSchema, RegisterUser } from '../utils/users/register';
-import { updateIfNotSpace, User } from '../utils/users/users';
+import ForeNavbar from "../components/ForeNavbar";
+import FormLabel from "../components/FormLabel";
+import HidePasswordButton from "../components/HidePasswordButton";
+import {
+  callRegisterApi,
+  registerSchema,
+  RegisterUser,
+} from "../utils/users/register";
+import { updateIfNotSpace, User } from "../utils/users/users";
 
 const USERNAME_REQUIREMENTS = (
   <ul>
@@ -46,10 +50,6 @@ function Register() {
 
   const { Formik } = formik;
   const navigate = useNavigate();
-
-  useEffect(() => {
-    document.title = "Register - FORE!";
-  });
 
   async function handleSubmit(values: RegisterUser): Promise<void> {
     // First validate the form field values
@@ -116,7 +116,7 @@ function Register() {
 
   return (
     <>
-      <ForeNavbar />
+      <ForeNavbar pageName="Register" />
       <Container className="my-5 col-sm-7 col-md-5 col-lg-4 col-xxl-3">
         <h1 className="mb-4 text-center">Register</h1>
         <Alert

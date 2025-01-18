@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Any, Annotated, Optional, Union
+from typing import Annotated, Any, Optional, Union
 
 import bcrypt
 from dotenv import load_dotenv
@@ -9,11 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import (
     BaseModel,
+    BeforeValidator,
     EmailStr,
+    Field,
     field_validator,
     model_validator,
-    Field,
-    BeforeValidator,
 )
 
 load_dotenv(dotenv_path="../.env")
@@ -22,6 +22,8 @@ client = AsyncIOMotorClient(os.environ["MONGODB_URL"])
 db = client.get_database("fore_database")
 users_collection = db.get_collection("users")
 rounds_collection = db.get_collection("rounds")
+courses_collection = db.get_collection("courses")
+
 
 USERNAME_PATTERN = re.compile(r"^(?=[a-zA-Z0-9._]{3,20}$)(?!.*[_.]{2})[^_.].*[^_.]$")
 PASSWORD_PATTERN = re.compile(
@@ -46,6 +48,16 @@ class User(BaseModel):
     username: str
     email: str
     password_hash: str
+
+
+class UserPreview(User):
+
+    class Config:
+        fields = {
+            "id": ...,
+            "name": ...,
+            "username": ...,
+        }
 
 
 class LoginUser(BaseModel):
@@ -224,82 +236,84 @@ async def email_taken(email: str):
 
 
 class Hole(BaseModel):
-    score: Optional[int] = Field(ge=1)
-    par: Optional[int] = Field(ge=1)
-    tees: Optional[str]
-    yards: Optional[int] = Field(ge=0)
+    score: Optional[int] = Field(ge=1)  # Manually entered by user
+    par: Optional[int]
+    yards: Optional[int]
 
 
+# TODO: change name
 class Course(BaseModel):
-    id: str
-    name: str
-    num_holes: Union[str, int]
-    city: Optional[str]
-    state: Optional[str]
-    country: Optional[str]
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    address: str
+    city: str
+    coordinates: str
+    country: str
+    created_at: str
+    fairway_grass: str
+    green_grass: str
+    holes: int
     length_format: str
+    likes: list
+    name: str
+    phone: str
+    scorecard: list[dict[str, Any]]
+    state: str
+    tee_boxes: list[dict[str, Any]]
+    updated_at: str
+    website: str
+    zip: str
 
-    @field_validator("num_holes")
-    @classmethod
-    def convert_num_holes_to_int(cls, value: Union[str, int]) -> int:
-        if isinstance(value, str):
-            try:
-                return int(value)
-            except ValueError:
-                raise ValueError(f"Cannot convert {value} to integer")
-        return value
+
+# Contains simple information about a course for quick display on the frontend UI
+class CoursePreview(Course):
+
+    class Config:
+        fields = {
+            "id": ...,
+            "name": ...,
+            "num_holes": ...,
+            "city": ...,
+            "state": ...,
+            "country": ...,
+            "length_format": ...,
+        }
 
 
 class Round(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    user_id: str
-    user_name: str
-    user_username: str
-    course: Course
+    user: UserPreview
+    course: CoursePreview
+    tees: Optional[str]
     scorecard: dict[str, Hole]
 
-    # Do some common sense validation on the scorecard keys (hole numbers)
-    @field_validator("scorecard")
+    # TODO: Make sure this is correct
+    @model_validator(mode="before")
     @classmethod
-    def validate_scorecard_keys(cls, value: dict[str, Hole]) -> dict[str, Hole]:
-        # Convert the string keys to integers, then sort them in ascending order
-        hole_number_keys = [int(key) for key in value.keys()]
-        sorted_hole_number_keys = sorted(hole_number_keys)
+    def sanitize_scorecard(cls, data: dict[str, Any]) -> dict[str, Any]:
 
-        # Ensure all hole numbers are positive
-        hole_numbers_are_positive: bool = all(
-            hole_key > 0 for hole_key in sorted_hole_number_keys
-        )
-        if not hole_numbers_are_positive:
-            raise ValueError("Hole numbers are not all positive")
+        sanitized_scorecard = {}
 
-        # Ensure hole numbers have step 1 (i.e. no holes are skipped)
-        hole_numbers_have_step_1: bool = all(
-            sorted_hole_number_keys[i + 1] == sorted_hole_number_keys[i] + 1
-            for i in range(len(sorted_hole_number_keys) - 1)
-        )
-        if not hole_numbers_have_step_1:
-            raise ValueError("Hole numbers do not have step 1")
+        num_holes = data["course"]["num_holes"]
 
-        # Ensure the first hole is 1
-        first_hole_is_1: bool = sorted_hole_number_keys[0] == 1
-        if not first_hole_is_1:
-            raise ValueError("First hole is not 1")
+        for hole_number in range(1, num_holes + 1):
 
-        return value
+            if str(hole_number) in data["scorecard"]:
+                hole = data["scorecard"][str(hole_number)]
+                sanitized_scorecard[str(hole_number)] = hole
 
-    class Config:
-        str_strip_whitespace = True
+        data["scorecard"] = sanitized_scorecard
+
+        return data
 
 
 @app.post(
     "/rounds",
-    response_description="Add a new round",
+    response_description="Post a new round",
     response_model=Round,
     status_code=status.HTTP_201_CREATED,
     response_model_by_alias=False,
 )
-async def add_round(round: Round):
+async def post_round(round: Round):
 
     new_round = await rounds_collection.insert_one(
         round.model_dump(by_alias=True, exclude=["id"])
@@ -310,7 +324,73 @@ async def add_round(round: Round):
     return created_round
 
 
-# @app.delete("/rounds/{round_id}")
-# async def delete_round(round_id: str):
+@app.post("/sanitize-courses")
+async def sanitize_courses():
 
-#     # delete the round here
+    cursor = courses_collection.find({})
+
+    async for course in cursor:
+
+        course_name = course["name"]
+        print(f"Sanitizing {course_name}")
+        if "holes" in course:
+            course["num_holes"] = int(course["holes"])
+            del course["holes"]
+        if "city" in course and course["city"]:
+            course["city"] = course["city"].title().strip()
+        if "state" in course and course["state"]:
+            course["state"] = course["state"].title().strip()
+        if "country" in course and course["country"]:
+            course["country"] = course["country"].title().strip()
+        if "address" in course and course["address"]:
+            course["address"] = course["address"].title().strip()
+        if "name" in course and course["name"]:
+            course["name"] = course["name"].title().strip()
+        if "fairwayGrass" in course:
+            course["fairway_grass"] = course["fairwayGrass"].strip()
+            del course["fairwayGrass"]
+        if "greenGrass" in course:
+            course["green_grass"] = course["greenGrass"].strip()
+            del course["greenGrass"]
+        if "createdAt" in course:
+            course["created_at"] = course["createdAt"]
+            del course["createdAt"]
+        if "lengthFormat" in course:
+            course["length_format"] = course["lengthFormat"].strip()
+            del course["lengthFormat"]
+        if "teeBoxes" in course:
+            for teebox in course["teeBoxes"]:
+                if "tee" in teebox:
+                    teebox["tee"] = teebox["tee"].title().strip()
+
+            course["tee_boxes"] = course["teeBoxes"]
+            del course["teeBoxes"]
+
+        if "updatedAt" in course:
+            course["updated_at"] = course["updatedAt"]
+            del course["updatedAt"]
+
+        if "scorecard" in course:
+            for hole in course["scorecard"]:
+                if "tees" in hole:
+                    for value in hole["tees"].values():
+                        if "color" in value:
+                            value["color"] = value["color"].title().strip()
+
+        await courses_collection.replace_one({"_id": course["_id"]}, course)
+
+    return {"detail": "Success"}
+
+
+class SearchCourses(BaseModel):
+    name: str
+
+
+@app.post("/courses/search")
+async def search_courses(course_search: SearchCourses):
+
+    query = {"$text": {"$search": f'"{course_search.name}"'}}
+
+    results = await courses_collection.find(query).to_list(length=20)
+
+    return results
