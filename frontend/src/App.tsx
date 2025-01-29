@@ -7,7 +7,7 @@ import ForeNavbar from "./components/ForeNavbar";
 function App() {
   return (
     <>
-      <ForeNavbar />
+      <ForeNavbar pageName="App" />
       <Container className="my-5">
         <h1>FORE!</h1>
       </Container>

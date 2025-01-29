@@ -1,5 +1,19 @@
 import { getApiUrl } from "./utils";
 
+export type TeeBox = {
+  tee: string;
+  slope: number;
+  handicap: number;
+  total_yards: number;
+};
+
+export type Hole = {
+  Hole: number;
+  Par: number;
+  tees: Record<string, Record<string, string | number>>;
+  Handicap: number;
+};
+
 export type Course = {
   _id: string;
   address: string;
@@ -9,14 +23,14 @@ export type Course = {
   created_at: string;
   fairway_grass: string;
   green_grass: string;
-  holes: number;
+  num_holes: number;
   length_format: string;
   likes: any[];
   name: string;
   phone: string;
-  scorecard: Array<Record<string, unknown>>; // Array of objects with string keys and unknown values
+  scorecard: Array<Hole>;
   state: string;
-  tee_boxes: Array<Record<string, unknown>>; // Array of objects with string keys and unknown values
+  tee_boxes: Array<TeeBox>;
   updated_at: string;
   website: string;
   zip: string;

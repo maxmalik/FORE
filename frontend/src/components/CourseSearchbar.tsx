@@ -1,32 +1,37 @@
 import { useState } from "react";
-import Button from "react-bootstrap/Button";
+import Card from "react-bootstrap/Card";
 import Dropdown from "react-bootstrap/Dropdown";
 import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
 
-import { callSearchApi, Course } from "../utils/courses";
+import { callSearchApi, Course, TeeBox } from "../utils/courses";
 import ClearSelectedCourseResultButton from "./ClearSelectedCourseResultButton";
+import TeeBoxSelectionModal from "./TeeBoxSelectionModal";
 
 interface CourseSearchbarProps {
   selectedResult: Course | null;
   setSelectedResult: (course: Course | null) => void;
+  setSelectedTeeBox: (teeBox: TeeBox | null) => void;
 }
 
 function CourseSearchbar({
   selectedResult,
   setSelectedResult,
+  setSelectedTeeBox,
 }: CourseSearchbarProps) {
   const [currentSearchTerm, setCurrentSearchTerm] = useState("");
   const [submittedSearchTerm, setSubmittedSearchTerm] = useState("");
   const [results, setResults] = useState<Course[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showTeeBoxSelectionModal, setShowTeeBoxSelectionModal] =
+    useState(false);
 
-  const handleEnterKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  function handleEnterKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
       event.preventDefault(); // Prevent form submission
       handleSearchSubmit(currentSearchTerm);
     }
-  };
+  }
 
   async function searchCourses(courseName: string): Promise<Course[]> {
     const response = await callSearchApi(courseName);
@@ -46,17 +51,35 @@ function CourseSearchbar({
     setShowDropdown(true);
   }
 
-  const handleSelectResult = (result: Course) => {
-    console.log("hi");
+  function handleSelectResult(result: Course) {
     setSelectedResult(result);
     setCurrentSearchTerm("");
     setShowDropdown(false);
-  };
-  const handleClearSelection = () => {
+    setShowTeeBoxSelectionModal(true);
+  }
+  function handleClearSelection() {
     setSelectedResult(null);
     setCurrentSearchTerm("");
     setResults([]);
-  };
+  }
+
+  function constructLocation(course: Course): string {
+    let location: string = "";
+
+    if (course.city !== "" && course.city != null) {
+      location += course.city;
+    }
+    if (course.state !== "" && course.state != null) {
+      location += ", " + course.state;
+    }
+    if (course.country !== "" && course.country != null) {
+      location += ", " + course.country;
+    }
+    location = location.replace(/^,/, "").trim();
+
+    return location;
+  }
+
   return (
     <>
       {!selectedResult ? (
@@ -71,11 +94,25 @@ function CourseSearchbar({
         />
       ) : (
         <InputGroup>
-          <Form.Control type="text" value={selectedResult["name"]} readOnly />
+          {/* <Form.Control type="text" value={selectedResult["name"]} readOnly /> */}
+          <Card.Text className="form-control readonly-text m-0">
+            <div className="fw-bold">{selectedResult["name"]}</div>
+            <div className="text-muted">
+              {constructLocation(selectedResult)}
+            </div>
+          </Card.Text>
           <ClearSelectedCourseResultButton
             handleClearSelection={handleClearSelection}
           />
         </InputGroup>
+      )}
+      {showTeeBoxSelectionModal && (
+        <TeeBoxSelectionModal
+          teeBoxes={selectedResult ? selectedResult.tee_boxes : []}
+          setSelectedTeeBox={setSelectedTeeBox}
+          showTeeBoxSelectionModal={showTeeBoxSelectionModal}
+          setShowTeeBoxSelectionModal={setShowTeeBoxSelectionModal}
+        />
       )}
       {showDropdown && results.length > 0 && (
         <Dropdown.Menu
@@ -92,7 +129,8 @@ function CourseSearchbar({
               key={index}
               onMouseDown={() => handleSelectResult(result)}
             >
-              {result["name"]}
+              <div className="fw-bold">{result["name"]}</div>
+              <div className="text-muted">{constructLocation(result)}</div>
             </Dropdown.Item>
           ))}
         </Dropdown.Menu>

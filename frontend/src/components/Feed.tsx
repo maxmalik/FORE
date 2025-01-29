@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
-import RoundCard from './RoundCard';
+import ForeNavbar from "./ForeNavbar";
+import RoundCard from "./RoundCard";
 
 const SAMPLE_DATA = [
   {
@@ -46,10 +47,6 @@ const SAMPLE_DATA = [
   // },
 ];
 function Feed() {
-  useEffect(() => {
-    document.title = "Feed - FORE!";
-  });
-
   return (
     <>
       {SAMPLE_DATA.map((round) => (
