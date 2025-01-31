@@ -60,3 +60,20 @@ export async function callSearchApi(courseName: string): Promise<Response> {
     throw error;
   }
 }
+
+export function constructLocation(course: Course): string {
+  let location: string = "";
+
+  if (course.city !== "" && course.city != null) {
+    location += course.city;
+  }
+  if (course.state !== "" && course.state != null) {
+    location += ", " + course.state;
+  }
+  if (course.country !== "" && course.country != null) {
+    location += ", " + course.country;
+  }
+  location = location.replace(/^,/, "").trim();
+
+  return location;
+}

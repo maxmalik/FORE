@@ -5,7 +5,7 @@ import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
 
 import { callSearchApi, Course, TeeBox } from "../utils/courses";
-import ClearSelectedCourseResultButton from "./ClearSelectedCourseResultButton";
+import ClearSelectedCourseResultButton from "./PostRound/ClearCourseSelectionButton";
 import TeeBoxSelectionModal from "./TeeBoxSelectionModal";
 
 interface CourseSearchbarProps {

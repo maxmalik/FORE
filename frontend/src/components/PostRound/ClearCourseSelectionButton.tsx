@@ -3,13 +3,13 @@ import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
 import { IoMdClose } from "react-icons/io";
 
-interface ClearSelectedCourseResultButtonProps {
-  handleClearSelection: () => void;
+interface ClearCourseSelectionButtonProps {
+  onClick: () => void;
 }
 
-function ClearSelectedCourseResultButton({
-  handleClearSelection,
-}: ClearSelectedCourseResultButtonProps) {
+function ClearCourseSelectionButton({
+  onClick,
+}: ClearCourseSelectionButtonProps) {
   return (
     <OverlayTrigger
       placement="top"
@@ -17,7 +17,7 @@ function ClearSelectedCourseResultButton({
     >
       <InputGroup.Text
         className="px-2"
-        onClick={handleClearSelection}
+        onClick={onClick}
         style={{ cursor: "pointer" }}
       >
         <IoMdClose size={25} />
@@ -26,4 +26,4 @@ function ClearSelectedCourseResultButton({
   );
 }
 
-export default ClearSelectedCourseResultButton;
+export default ClearCourseSelectionButton;
