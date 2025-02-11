@@ -95,10 +95,7 @@ def get_courses_for_course_names(course_names: list[str]) -> list[dict]:
 
 
 def sanitize_courses(courses: list[dict]) -> list[dict]:
-    for course in courses:
-        course = sanitize_course(course)
-
-    return courses
+    return [sanitize_course(course) for course in courses]
 
 
 def sanitize_course(course: dict) -> dict:
@@ -220,5 +217,7 @@ def lambda_handler(event, context):
     return
 
 
-# if __name__ == "__main__":
-#     lambda_handler(None, None)
+if __name__ == "__main__":
+    course_names_collection.delete_many({})
+    courses_collection.delete_many({})
+    # lambda_handler(None, None)
