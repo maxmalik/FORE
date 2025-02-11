@@ -2,6 +2,7 @@ import logging
 import os
 
 import requests
+from bson import ObjectId
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
@@ -93,6 +94,91 @@ def get_courses_for_course_names(course_names: list[str]) -> list[dict]:
     return all_courses
 
 
+def sanitize_courses(courses: list[dict]) -> list[dict]:
+    for course in courses:
+        course = sanitize_course(course)
+
+    return courses
+
+
+def sanitize_course(course: dict) -> dict:
+
+    if "__v" in course:
+        del course["__v"]
+
+    if "likes" in course:
+        del course["likes"]
+
+    new_id = ObjectId(course["_id"])
+    course["_id"] = new_id
+
+    if "holes" in course:
+        course["num_holes"] = int(course["holes"])
+        del course["holes"]
+    if "city" in course and course["city"]:
+        course["city"] = course["city"].title().strip()
+    if "state" in course and course["state"]:
+        course["state"] = course["state"].title().strip()
+    if "country" in course and course["country"]:
+        course["country"] = course["country"].title().strip()
+    if "address" in course and course["address"]:
+        course["address"] = course["address"].title().strip()
+    if "name" in course and course["name"]:
+        course["name"] = course["name"].title().strip()
+    if "fairwayGrass" in course:
+        course["fairway_grass"] = course["fairwayGrass"].title().strip()
+        del course["fairwayGrass"]
+    if "greenGrass" in course:
+        course["green_grass"] = course["greenGrass"].title().strip()
+        del course["greenGrass"]
+    if "createdAt" in course:
+        course["created_at"] = course["createdAt"]
+        del course["createdAt"]
+    if "lengthFormat" in course:
+        course["length_format"] = course["lengthFormat"].strip()
+        del course["lengthFormat"]
+    if "teeBoxes" in course:
+        for i, teebox in enumerate(course["teeBoxes"]):
+            if "tee" in teebox:
+                teebox["tee"] = teebox["tee"].title().strip()
+            tee_box_name = f"teeBox{i+1}"
+            # Calculate the total yards for the current teebox
+            total_yards = 0
+            if "scorecard" in course:
+                for hole in course["scorecard"]:
+                    if (
+                        "tees" in hole
+                        and tee_box_name in hole["tees"]
+                        and "yards" in hole["tees"][tee_box_name]
+                    ):
+                        total_yards = total_yards + hole["tees"][tee_box_name]["yards"]
+            teebox["total_yards"] = total_yards
+
+        course["tee_boxes"] = course["teeBoxes"]
+        del course["teeBoxes"]
+    if "updatedAt" in course:
+        course["updated_at"] = course["updatedAt"]
+        del course["updatedAt"]
+    if "scorecard" in course:
+        for hole in course["scorecard"]:
+            if "Hole" in hole:
+                hole["hole_number"] = hole["Hole"]
+                del hole["Hole"]
+            if "Par" in hole:
+                hole["par"] = hole["Par"]
+                del hole["Par"]
+            if "Handicap" in hole:
+                hole["handicap"] = hole["Handicap"]
+                del hole["Handicap"]
+
+            if "tees" in hole:
+                for value in hole["tees"].values():
+                    if "color" in value:
+                        value["color"] = value["color"].title().strip()
+
+    return course
+
+
 def upload_courses_to_mongodb(courses: list[dict]):
 
     logger.info("Uploading %d courses to MongoDB", len(courses))
@@ -124,6 +210,8 @@ def lambda_handler(event, context):
     course_names = get_n_course_names_from_mongodb(N)
 
     all_courses = get_courses_for_course_names(course_names)
+
+    all_courses = sanitize_courses(all_courses)
 
     upload_courses_to_mongodb(all_courses)
 
