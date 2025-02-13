@@ -8,10 +8,10 @@ export type TeeBox = {
 };
 
 export type Hole = {
-  Hole: number;
-  Par: number;
+  hole_number: number;
+  par: number;
   tees: Record<string, Record<string, string | number>>;
-  Handicap: number;
+  handicap: number;
 };
 
 export type Course = {
@@ -38,7 +38,7 @@ export type Course = {
 
 const API_URL = getApiUrl();
 
-export async function callSearchApi(courseName: string): Promise<Response> {
+export async function searchCourses(courseName: string): Promise<Course[]> {
   const endpoint: string = "courses/search";
 
   const url: string = `${API_URL}/${endpoint}`;
@@ -54,7 +54,8 @@ export async function callSearchApi(courseName: string): Promise<Response> {
       body: JSON.stringify(request),
     });
 
-    return response;
+    const results = await response.json();
+    return results as Course[];
   } catch (error) {
     //alert("Error occured while calling register API: " + error);
     throw error;

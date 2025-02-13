@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from bson import ObjectId
+from bson.errors import InvalidId
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorCollection
 
 from ...db import get_collection
 from .models import LoginUser, RegisterUser, User
 from .utils import get_password_hash, verify_password
 
-router = APIRouter(
-    prefix="/users", tags=["Users"], dependencies=[Depends(get_collection("users"))]
-)
+router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.post(
@@ -130,3 +130,41 @@ async def email_taken(
         raise HTTPException(status_code=409, detail="Email is already taken")
 
     return {"detail": "Email is available"}
+
+
+async def get_user(
+    user_id: str,
+    users_collection: AsyncIOMotorCollection,
+    fields: str = None,
+) -> User:
+
+    try:
+        user_object_id = ObjectId(user_id)
+    except InvalidId as exception:
+        raise HTTPException(status_code=422, detail="Invalid User ID") from exception
+
+    if fields:
+        projection = {field: 1 for field in fields.split(",")}
+
+    else:
+        projection = None
+
+    user = await users_collection.find_one({"_id": user_object_id}, projection)
+
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return User(**user)
+
+
+@router.get("/{user_id}")
+async def get_user_api(
+    user_id: str,
+    fields: str = Query(None, description="Comma-separated list of fields to return"),
+    users_collection: AsyncIOMotorCollection = Depends(get_collection("users")),
+):
+    return await get_user(
+        ObjectId(user_id),
+        users_collection,
+        fields,
+    )

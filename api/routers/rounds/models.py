@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -24,34 +24,28 @@ class CoursePreview(BaseModel):
     length_format: str
 
 
-class Hole(BaseModel):
-    score: Optional[int] = Field(ge=1)  # Manually entered by user
-    par: Optional[int]
-    yards: Optional[int]
+class RoundHole(BaseModel):
+    score: int | None
+    par: int | None
+    yards: int | None
+    handicap: int | None
+
+
+HoleRange = Annotated[int, Field(gt=0, lt=100)]
+
+
+class RoundPost(BaseModel):
+    user_id: str
+    course_id: str
+    tee_box_index: Optional[int]
+    scorecard: dict[str, Optional[HoleRange]]
 
 
 class Round(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    user: UserPreview
-    course: CoursePreview
-    tees: Optional[str]
-    scorecard: dict[str, Hole]
-
-    # Take only the scorecard keys in the range of the number of holes
-    @model_validator(mode="before")
-    @classmethod
-    def sanitize_scorecard(cls, data: dict[str, Any]) -> dict[str, Any]:
-
-        sanitized_scorecard = {}
-
-        num_holes = data["course"]["num_holes"]
-
-        for hole_number in range(1, num_holes + 1):
-
-            if str(hole_number) in data["scorecard"]:
-                hole = data["scorecard"][str(hole_number)]
-                sanitized_scorecard[str(hole_number)] = hole
-
-        data["scorecard"] = sanitized_scorecard
-
-        return data
+    user_id: str
+    course_id: str
+    tee_box_index: Optional[
+        int
+    ]  # Index of the selected tee box in the course's tee_boxes array
+    scorecard: dict[str, RoundHole]

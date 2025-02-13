@@ -17,6 +17,7 @@ class User(BaseModel):
     username: str
     email: str
     password_hash: str
+    rounds: list[PyObjectId] = Field(default=[])
 
 
 class UserPreview(BaseModel):
