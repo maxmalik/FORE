@@ -94,10 +94,6 @@ def get_courses_for_course_names(course_names: list[str]) -> list[dict]:
     return all_courses
 
 
-def sanitize_courses(courses: list[dict]) -> list[dict]:
-    return [sanitize_course(course) for course in courses]
-
-
 def sanitize_course(course: dict) -> dict:
 
     if "__v" in course:
@@ -173,6 +169,8 @@ def sanitize_course(course: dict) -> dict:
                     if "color" in value:
                         value["color"] = value["color"].title().strip()
 
+    course["rounds"] = []
+
     return course
 
 
@@ -208,7 +206,7 @@ def lambda_handler(event, context):
 
     all_courses = get_courses_for_course_names(course_names)
 
-    all_courses = sanitize_courses(all_courses)
+    all_courses = [sanitize_course(course) for course in all_courses]
 
     upload_courses_to_mongodb(all_courses)
 
@@ -217,7 +215,7 @@ def lambda_handler(event, context):
     return
 
 
-if __name__ == "__main__":
-    course_names_collection.delete_many({})
-    courses_collection.delete_many({})
-    # lambda_handler(None, None)
+# if __name__ == "__main__":
+#     # course_names_collection.delete_many({})
+#     # courses_collection.delete_many({})
+#     # lambda_handler(None, None)
