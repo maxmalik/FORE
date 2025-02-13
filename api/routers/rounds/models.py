@@ -31,14 +31,14 @@ class RoundHole(BaseModel):
     handicap: int | None
 
 
-HoleRange = Annotated[int, Field(gt=0, lt=100)]
+ScoreRange = Annotated[int, Field(gt=0, lt=100)]
 
 
 class RoundPost(BaseModel):
     user_id: str
     course_id: str
     tee_box_index: Optional[int]
-    scorecard: dict[str, Optional[HoleRange]]
+    scorecard: dict[str, Optional[ScoreRange]]
 
 
 class Round(BaseModel):

@@ -15,7 +15,7 @@ export type Hole = {
 };
 
 export type Course = {
-  _id: string;
+  id: string;
   address: string;
   city: string;
   coordinates: string;

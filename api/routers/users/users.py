@@ -7,10 +7,10 @@ from ...db import get_collection
 from .models import LoginUser, RegisterUser, User
 from .utils import get_password_hash, verify_password
 
-router = APIRouter(prefix="/users", tags=["Users"])
+users_router = APIRouter()
 
 
-@router.post(
+@users_router.post(
     "/login",
     response_description="Log a user in",
     response_model=User,
@@ -43,7 +43,7 @@ async def login(
     return user
 
 
-@router.post(
+@users_router.post(
     "/register",
     response_description="Register a new user",
     response_model=User,
@@ -95,7 +95,7 @@ async def register(
     return created_user
 
 
-@router.get(
+@users_router.get(
     "/username-taken/{username}",
     response_description="Determine if a username is taken",
 )
@@ -114,7 +114,7 @@ async def username_taken(
     return {"detail": "Username is available"}
 
 
-@router.get(
+@users_router.get(
     "/email-taken/{email}", response_description="Determine if an email is taken"
 )
 async def email_taken(
@@ -157,7 +157,7 @@ async def get_user(
     return User(**user)
 
 
-@router.get("/{user_id}")
+@users_router.get("/{user_id}")
 async def get_user_api(
     user_id: str,
     fields: str = Query(None, description="Comma-separated list of fields to return"),

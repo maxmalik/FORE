@@ -8,7 +8,7 @@ from ..courses.courses import Course, get_course
 from ..users.users import User, get_user
 from .models import Round, RoundHole, RoundPost
 
-router = APIRouter(prefix="/rounds", tags=["Rounds"])
+rounds_router = APIRouter()
 
 
 async def verify_and_get_user(
@@ -69,7 +69,7 @@ def sync_hole_info_with_scorecard(
     return new_scorecard
 
 
-@router.post(
+@rounds_router.post(
     "/",
     response_description="Post a new round",
     response_model=Round,
@@ -128,7 +128,12 @@ async def post_round(
     return created_round
 
 
-@router.get("/", response_model=list[Round])
+@rounds_router.get(
+    "/",
+    response_model=list[Round],
+    description="Get multiple rounds given their IDs",
+    response_model_by_alias=False,
+)
 async def get_rounds(
     ids: list[str] = Query(...),
     rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),

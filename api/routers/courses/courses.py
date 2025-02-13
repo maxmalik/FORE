@@ -6,14 +6,14 @@ from motor.motor_asyncio import AsyncIOMotorCollection
 from ...db import get_collection
 from .models import Course, SearchCourses
 
-router = APIRouter(
-    prefix="/courses",
-    tags=["Courses"],
-)
+courses_router = APIRouter()
 
 
-@router.post(
-    "/search", response_description="Search for a course", response_model=list[Course]
+@courses_router.post(
+    "/search",
+    response_description="Search for a course",
+    response_model=list[Course],
+    response_model_by_alias=False,
 )
 async def search_courses(
     course_search: SearchCourses,
@@ -57,7 +57,9 @@ async def get_course(
     return Course(**course)
 
 
-@router.get("/{course_id}")
+@courses_router.get(
+    "/{course_id}", response_model=Course, description="Get a course by ID"
+)
 async def get_course_api(
     course_id: str,
     fields: str = Query(None, description="Comma-separated list of fields to return"),
@@ -68,10 +70,3 @@ async def get_course_api(
         courses_collection,
         fields,
     )
-
-
-@router.post("/rounds")
-async def put_rounds_arrays(
-    courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
-):
-    courses_collection.update_many({}, {"$set": {"rounds": []}})  # Update all documents
