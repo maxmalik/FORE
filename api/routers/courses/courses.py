@@ -12,7 +12,9 @@ router = APIRouter(
 )
 
 
-@router.post("/search", response_description="Search for a course")
+@router.post(
+    "/search", response_description="Search for a course", response_model=list[Course]
+)
 async def search_courses(
     course_search: SearchCourses,
     courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
@@ -27,7 +29,7 @@ async def search_courses(
         if "_id" in course:
             course["_id"] = str(course["_id"])
 
-    return [Course(**course) for course in results]
+    return results
 
 
 async def get_course(

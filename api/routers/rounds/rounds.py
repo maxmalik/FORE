@@ -1,5 +1,6 @@
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from bson.errors import InvalidId
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorCollection
 
 from ...db import get_collection
@@ -125,3 +126,18 @@ async def post_round(
         {"_id": insert_round_result.inserted_id}
     )
     return created_round
+
+
+@router.get("/", response_model=list[Round])
+async def get_rounds(
+    ids: list[str] = Query(...),
+    rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),
+):
+    try:
+        object_ids = [ObjectId(id) for id in ids]
+    except InvalidId as exception:
+        raise HTTPException(status_code=422, detail="Invalid Round ID") from exception
+
+    rounds = await rounds_collection.find({"_id": {"$in": object_ids}}).to_list()
+
+    return rounds

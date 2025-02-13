@@ -39,12 +39,12 @@ function ScorecardTable({
           <tr>
             <td className="align-middle">Par</td>
             {course.scorecard.map((hole) => (
-              <td key={hole.Hole} className="text-center align-middle">
-                {hole.Par}
+              <td key={hole.hole_number} className="text-center align-middle">
+                {hole.par}
               </td>
             ))}
             <td className="text-center align-middle">
-              {course.scorecard.reduce((acc, hole) => acc + hole.Par, 0)}
+              {course.scorecard.reduce((acc, hole) => acc + hole.par, 0)}
             </td>
           </tr>
         )}
@@ -56,7 +56,7 @@ function ScorecardTable({
               {course.length_format === "Y" ? "(Yards)" : "(Meters)"}
             </td>
             {course.scorecard.map((hole) => (
-              <td key={hole.Hole} className="text-center align-middle">
+              <td key={hole.hole_number} className="text-center align-middle">
                 {hole.tees[`teeBox${teeBoxIndex + 1}`].yards}
               </td>
             ))}
@@ -70,7 +70,7 @@ function ScorecardTable({
             <td className="align-middle">Handicap</td>
             {course.scorecard.map((hole, index) => (
               <td key={index + 1} className="text-center">
-                {hole.Handicap}
+                {hole.handicap}
               </td>
             ))}
             <td></td>

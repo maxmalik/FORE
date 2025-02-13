@@ -1,44 +1,36 @@
 import { useState } from "react";
 import Button from "react-bootstrap/Button";
-import Card from "react-bootstrap/Card";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
-import InputGroup from "react-bootstrap/InputGroup";
 
 import ForeNavbar from "../components/ForeNavbar";
-import ClearCourseSelectionButton from "../components/PostRound/ClearCourseSelectionButton";
-import CourseCard from "../components/PostRound/CourseCard";
 import ResultsDropdown from "../components/PostRound/ResultsDropdown";
 import ScorecardTable from "../components/PostRound/ScorecardTable";
+import SelectedCourseDisplay from "../components/PostRound/SelectedCourseDisplay";
 import TeeBoxSelectionModal from "../components/PostRound/TeeBoxSelectionModal";
-import { callSearchApi, Course } from "../utils/courses";
+import { Course, searchCourses } from "../utils/courses";
+import { postRound } from "../utils/rounds";
+import { getUserData } from "../utils/users/users";
 
 function PostRound() {
-  const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
-  const [selectedTeeBoxIndex, setSelectedTeeBoxIndex] = useState<
-    number | -1 | null
-  >(null);
-  const [scores, setScores] = useState<Record<string, string>>({});
-  const [caption, setCaption] = useState<string>("");
-
-  const [currentSearchTerm, setCurrentSearchTerm] = useState("");
-  const [submittedSearchTerm, setSubmittedSearchTerm] = useState("");
   const [results, setResults] = useState<Course[]>([]);
+  const [currentSearchTerm, setCurrentSearchTerm] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
+  const [submittedSearchTerm, setSubmittedSearchTerm] = useState("");
+  const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
   const [showTeeBoxSelectionModal, setShowTeeBoxSelectionModal] =
     useState(false);
+  const [selectedTeeBoxIndex, setSelectedTeeBoxIndex] = useState<number | null>(
+    null
+  );
+  const [caption, setCaption] = useState<string>("");
+  const [scores, setScores] = useState<Record<string, string>>({});
 
   function handleEnterKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
       event.preventDefault(); // Prevent form submission
       handleSearchSubmit(currentSearchTerm);
     }
-  }
-
-  async function searchCourses(courseName: string): Promise<Course[]> {
-    const response = await callSearchApi(courseName);
-    const results = await response.json();
-    return results as Course[];
   }
 
   async function handleSearchSubmit(term: string): Promise<void> {
@@ -82,14 +74,45 @@ function PostRound() {
     setScores(updatedScores);
   }
 
-  function handleSubmit() {
-    // if (selectedResultId !== null) {
-    //   console.log(`course: ${selectedResult.name}`);
-    //   console.table(scores);
-    //   console.log(caption);
-    // }
+  async function handleSubmit() {
+    const userData = getUserData();
+    let userId;
+    try {
+      userId = userData.id;
+    } catch (error) {
+      alert("Error: no user logged in");
+      return;
+    }
+    const courseId = selectedResultId;
+
+    let scorecard: Record<string, number | null> = {};
+
+    Object.entries(scores).forEach(([holeNumber, score]) => {
+      if (score === "") {
+        scorecard[holeNumber] = null;
+      } else {
+        scorecard[holeNumber] = Number(score);
+      }
+    });
+
+    const response = await postRound(
+      userId,
+      courseId!,
+      selectedTeeBoxIndex,
+      scorecard
+    );
+
+    // Post round was successful
+    if (response.ok) {
+      alert("successful post");
+    } else {
+      const body = await response.json();
+      alert("unsuccessful post");
+      console.log(body);
+    }
   }
 
+  // Returns {"1": "", "2": "", ..., "{numHoles}": ""}
   function getInitialScores(numHoles: number): { [key: string]: string } {
     return Object.fromEntries(
       Array.from({ length: numHoles }, (_, i) => [(i + 1).toString(), ""])
@@ -110,7 +133,7 @@ function PostRound() {
       <ForeNavbar pageName="Post Round" />
       <h1 className="my-5 text-center">Post Round</h1>
       {!selectedResultId ? (
-        // If no result is selected, display the search bar and dropdown
+        // If no result is selected, display the search bar and results dropdown
         <Container className="my-5 col-sm-7 col-md-5 col-lg-4 col-xxl-3">
           <Form.Control
             type="text"
@@ -133,16 +156,12 @@ function PostRound() {
 
         <>
           <Container className="my-5 col-sm-7 col-md-5 col-lg-4 col-xxl-3">
-            <InputGroup>
-              <Card.Text className="form-control readonly-text m-0">
-                <CourseCard
-                  course={
-                    results.find((result) => result._id === selectedResultId)!
-                  }
-                />
-              </Card.Text>
-              <ClearCourseSelectionButton onClick={handleClearSelection} />
-            </InputGroup>
+            <SelectedCourseDisplay
+              course={
+                results.find((result) => result._id === selectedResultId)!
+              }
+              onClearSelection={handleClearSelection}
+            />
           </Container>
           <Container className="my-5 col-sm-12 col-md-12 col-lg-10 col-xl-8 col-xxl-6">
             <TeeBoxSelectionModal
