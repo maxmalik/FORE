@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 from ...utils import PyObjectId
 

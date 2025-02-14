@@ -3,13 +3,13 @@ import bcrypt
 
 def get_password_hash(password: str) -> str:
     # Convert password to an array of bytes
-    bytes = password.encode("utf-8")
+    pw_bytes = password.encode("utf-8")
 
     # Generate the salt
     salt = bcrypt.gensalt()
 
     # Hash the password
-    password_hash = bcrypt.hashpw(bytes, salt)
+    password_hash = bcrypt.hashpw(pw_bytes, salt)
 
     return password_hash.decode("utf-8")
 
