@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Button from "react-bootstrap/Button";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
@@ -14,7 +14,10 @@ import { Course, searchCourses } from "../utils/courses";
 import { postRound } from "../utils/rounds";
 import { getUserData } from "../utils/users/users";
 
+type Status = "none" | "busy" | "post-complete";
+
 function PostRound() {
+  const [status, setStatus] = useState<Status>("none");
   const [results, setResults] = useState<Course[] | null>(null);
   const [currentSearchTerm, setCurrentSearchTerm] = useState("");
   const [loadingResults, setLoadingResults] = useState(false);
@@ -28,10 +31,24 @@ function PostRound() {
   );
   const [caption, setCaption] = useState<string>("");
   const [scores, setScores] = useState<Record<string, string>>({});
-  const [postButtonDisabled, setPostButtonDisabled] = useState(false);
-  const [postSuccess, setPostSuccess] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(3); // Countdown in seconds
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (status === "post-complete") {
+      const timer = setInterval(() => {
+        setRedirectCountdown((prev) => prev - 1);
+      }, 1000);
+
+      // Redirect when countdown reaches 0
+      if (redirectCountdown === 0) {
+        navigate("/main");
+      }
+
+      return () => clearInterval(timer); // Cleanup interval
+    }
+  }, [status, redirectCountdown, navigate]);
 
   function handleEnterKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
@@ -84,7 +101,7 @@ function PostRound() {
   }
 
   async function handleSubmit() {
-    setPostButtonDisabled(true);
+    setStatus("busy");
     const userData = getUserData();
     let userId;
     try {
@@ -114,14 +131,12 @@ function PostRound() {
 
     // Post round was successful
     if (response.ok) {
-      setPostSuccess(true);
-
-      navigate("/main");
+      setStatus("post-complete");
     } else {
       const body = await response.json();
       alert("unsuccessful post");
       console.log(body);
-      setPostButtonDisabled(false);
+      setStatus("none");
     }
   }
 
@@ -212,18 +227,18 @@ function PostRound() {
                 />
                 <div className="text-end">
                   <Button
-                    disabled={postButtonDisabled}
+                    disabled={status === "busy"}
                     variant="success"
                     onClick={handleSubmit}
                   >
                     Post
                   </Button>
                 </div>
-                {postSuccess && (
+                {status === "post-complete" && (
                   // TODO: Make this actually show at the correct time
                   <h5 className="text-center">
-                    Post success! If you are not redirected to dashboard, click{" "}
-                    <a href="/main">here</a>
+                    Post success! Redirecting in {redirectCountdown} seconds...
+                    If you are not redirected, click <a href="/main">here</a>
                   </h5>
                 )}
               </Form>
