@@ -6,20 +6,20 @@ export async function postRound(
   userId: string,
   courseId: string,
   teeBoxIndex: number | null,
+  caption: string,
   scorecard: Record<string, number | null>
 ): Promise<Response> {
   const endpoint: string = "rounds/";
 
   const url: string = `${API_URL}/${endpoint}`;
 
-  const request = {
+  let request = {
     user_id: userId,
     course_id: courseId,
     tee_box_index: teeBoxIndex,
     scorecard: scorecard,
+    ...(caption !== "" && { caption }),
   };
-
-  console.log(request);
 
   try {
     const response: Response = await fetch(url, {

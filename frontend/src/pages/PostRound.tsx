@@ -126,6 +126,7 @@ function PostRound() {
       userId,
       courseId!,
       selectedTeeBoxIndex,
+      caption,
       scorecard
     );
 
