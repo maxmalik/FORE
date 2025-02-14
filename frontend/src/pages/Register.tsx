@@ -283,14 +283,8 @@ function Register() {
           )}
         </Formik>
         <div className="d-flex mt-3 align-items-center">
-          Already have an account?
-          <Button
-            variant="link"
-            className="p-0 px-2"
-            onClick={() => navigate("/login")}
-          >
-            Log in
-          </Button>
+          Already have an account? &nbsp;
+          <a href="/login">Login</a>
         </div>
       </Container>
     </>
