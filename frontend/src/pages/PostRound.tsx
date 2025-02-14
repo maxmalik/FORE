@@ -2,6 +2,8 @@ import { useState } from "react";
 import Button from "react-bootstrap/Button";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
+import Spinner from "react-bootstrap/Spinner";
+import { useNavigate } from "react-router-dom";
 
 import ForeNavbar from "../components/ForeNavbar";
 import ResultsDropdown from "../components/PostRound/ResultsDropdown";
@@ -13,8 +15,9 @@ import { postRound } from "../utils/rounds";
 import { getUserData } from "../utils/users/users";
 
 function PostRound() {
-  const [results, setResults] = useState<Course[]>([]);
+  const [results, setResults] = useState<Course[] | null>(null);
   const [currentSearchTerm, setCurrentSearchTerm] = useState("");
+  const [loadingResults, setLoadingResults] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [submittedSearchTerm, setSubmittedSearchTerm] = useState("");
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
@@ -25,6 +28,10 @@ function PostRound() {
   );
   const [caption, setCaption] = useState<string>("");
   const [scores, setScores] = useState<Record<string, string>>({});
+  const [postButtonDisabled, setPostButtonDisabled] = useState(false);
+  const [postSuccess, setPostSuccess] = useState(false);
+
+  const navigate = useNavigate();
 
   function handleEnterKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
@@ -35,11 +42,13 @@ function PostRound() {
 
   async function handleSearchSubmit(term: string): Promise<void> {
     if (term.trim() === "") {
-      setResults([]);
+      setResults(null);
       setShowDropdown(false);
       return;
     }
+    setLoadingResults(true);
     const results = await searchCourses(term);
+    setLoadingResults(false);
     setResults(results);
     setSubmittedSearchTerm(term);
     setShowDropdown(true);
@@ -49,7 +58,7 @@ function PostRound() {
     setSelectedResultId(resultId);
     setCurrentSearchTerm("");
     setShowDropdown(false);
-    const selectedResult = results.find((result) => result._id === resultId)!;
+    const selectedResult = results!.find((result) => result.id === resultId)!;
     if (selectedResult.tee_boxes.length === 0) {
       setSelectedTeeBoxIndex(-1);
       setScores(getInitialScores(selectedResult.num_holes));
@@ -60,7 +69,7 @@ function PostRound() {
   function handleClearSelection() {
     setSelectedResultId(null);
     setCurrentSearchTerm("");
-    setResults([]);
+    setResults(null);
     setScores({});
     setSelectedTeeBoxIndex(null);
   }
@@ -75,6 +84,7 @@ function PostRound() {
   }
 
   async function handleSubmit() {
+    setPostButtonDisabled(true);
     const userData = getUserData();
     let userId;
     try {
@@ -104,11 +114,14 @@ function PostRound() {
 
     // Post round was successful
     if (response.ok) {
-      alert("successful post");
+      setPostSuccess(true);
+
+      navigate("/main");
     } else {
       const body = await response.json();
       alert("unsuccessful post");
       console.log(body);
+      setPostButtonDisabled(false);
     }
   }
 
@@ -122,8 +135,8 @@ function PostRound() {
   function handleTeeBoxSelection(teeBoxIndex: number) {
     setSelectedTeeBoxIndex(teeBoxIndex);
     setShowTeeBoxSelectionModal(false);
-    const selectedResult = results.find(
-      (result) => result._id === selectedResultId
+    const selectedResult = results!.find(
+      (result) => result.id === selectedResultId
     )!;
     setScores(getInitialScores(selectedResult.num_holes));
   }
@@ -141,15 +154,21 @@ function PostRound() {
             value={currentSearchTerm}
             onChange={(e) => setCurrentSearchTerm(e.target.value)}
             onKeyDown={handleEnterKeyDown}
-            onFocus={() => results.length > 0 && setShowDropdown(true)}
-            onBlur={() => results.length > 0 && setShowDropdown(false)}
+            onFocus={() => results !== null && setShowDropdown(true)}
+            onBlur={() => results !== null && setShowDropdown(false)}
           />
-          <ResultsDropdown
-            show={showDropdown && results.length > 0}
-            results={results}
-            showingResultsFor={submittedSearchTerm}
-            onSelectResult={handleSelectResult}
-          />
+          {loadingResults ? (
+            <div className="d-flex justify-content-center m-3">
+              <Spinner animation="border" />
+            </div>
+          ) : (
+            <ResultsDropdown
+              show={showDropdown}
+              results={results!}
+              showingResultsFor={submittedSearchTerm}
+              onSelectResult={handleSelectResult}
+            />
+          )}
         </Container>
       ) : (
         // Otherwise display the selected course and the form
@@ -158,16 +177,16 @@ function PostRound() {
           <Container className="my-5 col-sm-7 col-md-5 col-lg-4 col-xxl-3">
             <SelectedCourseDisplay
               course={
-                results.find((result) => result._id === selectedResultId)!
+                results!.find((result) => result.id === selectedResultId)!
               }
               onClearSelection={handleClearSelection}
             />
           </Container>
-          <Container className="my-5 col-sm-12 col-md-12 col-lg-10 col-xl-8 col-xxl-6">
+          <Container fluid className="my-5 col-lg-12 col-xl-10 col-xxl-8">
             <TeeBoxSelectionModal
               show={showTeeBoxSelectionModal}
               course={
-                results.find((result) => result._id === selectedResultId)!
+                results!.find((result) => result.id === selectedResultId)!
               }
               onTeeBoxSelection={handleTeeBoxSelection}
             />
@@ -185,17 +204,28 @@ function PostRound() {
                 <h5>Scorecard</h5>
                 <ScorecardTable
                   course={
-                    results.find((result) => result._id === selectedResultId)!
+                    results!.find((result) => result.id === selectedResultId)!
                   }
                   teeBoxIndex={selectedTeeBoxIndex}
                   scores={scores}
                   onScoreChange={handleScoreChange}
                 />
                 <div className="text-end">
-                  <Button variant="success" onClick={handleSubmit}>
+                  <Button
+                    disabled={postButtonDisabled}
+                    variant="success"
+                    onClick={handleSubmit}
+                  >
                     Post
                   </Button>
                 </div>
+                {postSuccess && (
+                  // TODO: Make this actually show at the correct time
+                  <h5 className="text-center">
+                    Post success! If you are not redirected to dashboard, click{" "}
+                    <a href="/main">here</a>
+                  </h5>
+                )}
               </Form>
             )}
           </Container>

@@ -5,7 +5,7 @@ import CourseCard from "./CourseCard";
 
 interface ResultsDropdownProps {
   show: boolean;
-  results: Course[];
+  results: Course[] | null;
   showingResultsFor: string;
   onSelectResult: (resultId: string) => void;
 }
@@ -22,18 +22,22 @@ function ResultsDropdown({
       style={{ position: "relative", width: "100%", zIndex: 1 }}
     >
       <Dropdown.Header>
-        <p className="text-muted">
+        <p className="mb-0 text-muted">
           Showing results for <strong>{showingResultsFor}</strong>
         </p>
       </Dropdown.Header>
-      {results.map((result) => (
-        <Dropdown.Item
-          key={result._id}
-          onMouseDown={() => onSelectResult(result._id)}
-        >
-          <CourseCard course={result} />
-        </Dropdown.Item>
-      ))}
+      {results !== null && results.length > 0 ? (
+        results.map((result) => (
+          <Dropdown.Item
+            key={result.id}
+            onMouseDown={() => onSelectResult(result.id)}
+          >
+            <CourseCard course={result} />
+          </Dropdown.Item>
+        ))
+      ) : (
+        <div className="m-1 text-center text-muted">No results found</div>
+      )}
     </Dropdown.Menu>
   );
 }

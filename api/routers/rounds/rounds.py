@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -96,6 +98,7 @@ async def post_round(
         course_id=round_post.course_id,
         tee_box_index=round_post.tee_box_index,
         scorecard=new_scorecard,
+        date_posted=datetime.now(tz=timezone.utc),
     ).model_dump(exclude=["id"])
 
     # Add the round to the rounds collection

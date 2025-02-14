@@ -1,6 +1,6 @@
-import Card from 'react-bootstrap/Card';
-import Col from 'react-bootstrap/Col';
-import Table from 'react-bootstrap/Table';
+import Card from "react-bootstrap/Card";
+import Col from "react-bootstrap/Col";
+import Table from "react-bootstrap/Table";
 
 interface RoundCardProps {
   userName: string;
