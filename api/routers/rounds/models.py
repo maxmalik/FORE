@@ -1,27 +1,9 @@
+from datetime import datetime
 from typing import Annotated, Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
 from ...utils import PyObjectId
-
-
-class UserPreview(BaseModel):
-
-    id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    name: str
-    username: str
-
-
-# Contains simple information about a course for quick display on the frontend UI
-class CoursePreview(BaseModel):
-
-    id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    name: str
-    num_holes: int
-    city: str
-    state: str
-    country: str
-    length_format: str
 
 
 class RoundHole(BaseModel):
@@ -49,3 +31,4 @@ class Round(BaseModel):
         int
     ]  # Index of the selected tee box in the course's tee_boxes array
     scorecard: dict[str, RoundHole]
+    date_posted: datetime
