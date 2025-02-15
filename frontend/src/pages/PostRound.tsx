@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import ForeNavbar from "../components/ForeNavbar";
 import ResultsDropdown from "../components/PostRound/ResultsDropdown";
 import ScorecardTable from "../components/PostRound/ScorecardTable";
+import ScorecardTableModeDropdown from "../components/PostRound/ScorecardTableModeDropdown";
 import SelectedCourseDisplay from "../components/PostRound/SelectedCourseDisplay";
 import TeeBoxSelectionModal from "../components/PostRound/TeeBoxSelectionModal";
 import { Course, searchCourses } from "../utils/courses";
@@ -15,6 +16,7 @@ import { postRound } from "../utils/rounds";
 import { getUserData } from "../utils/users/users";
 
 type Status = "none" | "busy" | "post-complete";
+export type TableMode = "all-holes" | "front-and-back" | "total";
 
 function PostRound() {
   const [status, setStatus] = useState<Status>("none");
@@ -30,6 +32,7 @@ function PostRound() {
     null
   );
   const [caption, setCaption] = useState<string>("");
+  const [tableMode, setTableMode] = useState<TableMode>("all-holes");
   const [scores, setScores] = useState<Record<string, string>>({});
   const [redirectCountdown, setRedirectCountdown] = useState(3); // Countdown in seconds
 
@@ -43,7 +46,7 @@ function PostRound() {
 
       // Redirect when countdown reaches 0
       if (redirectCountdown === 0) {
-        navigate("/main");
+        navigate("/dashboard");
       }
 
       return () => clearInterval(timer); // Cleanup interval
@@ -217,7 +220,16 @@ function PostRound() {
                   />
                 </Form.Group>
 
-                <h5>Scorecard</h5>
+                <div className="d-flex vertical-align-center align-items-center mb-1">
+                  <h4 className="d-inline-block m-0">Scorecard</h4>
+                  <ScorecardTableModeDropdown
+                    num_holes={
+                      results!.find((result) => result.id === selectedResultId)!
+                        .num_holes
+                    }
+                    selectMode={setTableMode}
+                  />
+                </div>
                 <ScorecardTable
                   course={
                     results!.find((result) => result.id === selectedResultId)!
@@ -239,7 +251,8 @@ function PostRound() {
                   // TODO: Make this actually show at the correct time
                   <h5 className="text-center">
                     Post success! Redirecting in {redirectCountdown} seconds...
-                    If you are not redirected, click <a href="/main">here</a>
+                    If you are not redirected, click{" "}
+                    <a href="/dashboard">here</a>
                   </h5>
                 )}
               </Form>

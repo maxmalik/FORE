@@ -3,7 +3,7 @@ import Container from "react-bootstrap/Container";
 import Feed from "../components/Feed";
 import ForeNavbar from "../components/ForeNavbar";
 
-function Main() {
+function Dashboard() {
   return (
     <>
       <ForeNavbar pageName="Main" />
@@ -15,4 +15,4 @@ function Main() {
   );
 }
 
-export default Main;
+export default Dashboard;
