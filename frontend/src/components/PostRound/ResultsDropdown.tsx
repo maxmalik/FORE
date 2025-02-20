@@ -6,14 +6,14 @@ import CourseCard from "./CourseCard";
 interface ResultsDropdownProps {
   show: boolean;
   results: Course[] | null;
-  showingResultsFor: string;
-  onSelectResult: (resultId: string) => void;
+  submittedSearchTerm: string;
+  onSelectResult: (result: Course) => void;
 }
 
 function ResultsDropdown({
   show,
   results,
-  showingResultsFor,
+  submittedSearchTerm,
   onSelectResult,
 }: ResultsDropdownProps) {
   return (
@@ -23,14 +23,14 @@ function ResultsDropdown({
     >
       <Dropdown.Header>
         <p className="mb-0 text-muted">
-          Showing results for <strong>{showingResultsFor}</strong>
+          Showing results for <strong>{submittedSearchTerm}</strong>
         </p>
       </Dropdown.Header>
       {results !== null && results.length > 0 ? (
         results.map((result) => (
           <Dropdown.Item
             key={result.id}
-            onMouseDown={() => onSelectResult(result.id)}
+            onMouseDown={() => onSelectResult(result)}
           >
             <CourseCard course={result} />
           </Dropdown.Item>

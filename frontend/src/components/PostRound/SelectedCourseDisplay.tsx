@@ -15,9 +15,9 @@ function SelectedCourseDisplay({
 }: SelectedCourseDisplayProps) {
   return (
     <InputGroup>
-      <Card.Text className="form-control readonly-text m-0">
+      <Card.Body className="form-control readonly-text m-0 p-2">
         <CourseCard course={course} />
-      </Card.Text>
+      </Card.Body>
       <ClearCourseSelectionButton onClick={onClearSelection} />
     </InputGroup>
   );

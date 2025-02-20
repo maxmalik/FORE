@@ -22,6 +22,7 @@ function TeeBoxSelectionModal({
       <Modal.Body className="d-flex flex-wrap justify-content-center align-items-center">
         {course.tee_boxes.map((teeBox, index) => (
           <Button
+            key={index}
             onClick={() => onTeeBoxSelection(index)}
             className="m-1"
             variant="outline-light"
@@ -34,6 +35,15 @@ function TeeBoxSelectionModal({
           </Button>
         ))}
       </Modal.Body>
+      <Modal.Footer>
+        <Button
+          variant="link"
+          style={{ color: "lightgrey" }}
+          onClick={() => onTeeBoxSelection(-1)}
+        >
+          No thanks, I'll proceed without one
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 }
