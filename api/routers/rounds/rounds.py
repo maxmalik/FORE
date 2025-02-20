@@ -8,7 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorCollection
 from ...db import get_collection
 from ..courses.courses import Course, get_course
 from ..users.users import User, get_user
-from .models import Round, RoundHole, RoundPost
+from .models import Round, RoundPost, RoundScorecard, ScorecardModeEnum
 
 rounds_router = APIRouter()
 
@@ -37,38 +37,121 @@ async def verify_and_get_course(
     return course
 
 
-def sync_hole_info_with_scorecard(
-    scorecard: dict[str, int], tee_box_index: int | None, course: Course
-) -> dict[str, RoundHole]:
-    new_scorecard = dict()
+def validate_scorecard(
+    scorecard_mode: ScorecardModeEnum, scorecard: dict[str, int], course: Course
+):
+    if scorecard_mode == ScorecardModeEnum.all_holes:
+        for hole_number in range(1, course.num_holes + 1):
+            if str(hole_number) not in scorecard:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Hole {hole_number} not provided in scorecard",
+                )
 
-    if tee_box_index is not None:
-        tee_box_name = f"teeBox{tee_box_index+1}"
+    elif scorecard_mode == ScorecardModeEnum.front_and_back:
+        if course.num_holes != 18:
+            raise HTTPException(
+                status_code=422,
+                detail="Cannot use front and back mode if course is not 18 holes",
+            )
+        if "front" not in scorecard:
+            raise HTTPException(
+                status_code=422, detail="Front 9 not provided in scorecard"
+            )
+        if "back" not in scorecard:
+            raise HTTPException(
+                status_code=422, detail="Back 9 not provided in scorecard"
+            )
 
-    for hole_number_index in range(course.num_holes):
+    elif scorecard_mode == ScorecardModeEnum.total_score:
+        if "total" not in scorecard:
+            raise HTTPException(
+                status_code=422, detail="Total not provided in scorecard"
+            )
 
-        hole_number_str = str(hole_number_index + 1)
-        score = scorecard.get(hole_number_str, None)
 
-        if len(course.scorecard) == 0:
-            par = None
-            yards = None
-            handicap = None
+def get_tee_box_name(tee_box_index: int | None) -> str | None:
+    return f"teeBox{tee_box_index+1}" if tee_box_index is not None else None
 
-        else:
 
-            par = course.scorecard[hole_number_index].par
-            if tee_box_index is not None:
-                yards = course.scorecard[hole_number_index].tees[tee_box_name].yards
-            else:
-                yards = None
-            handicap = course.scorecard[hole_number_index].handicap
+def calculate_par_and_yards(
+    course: Course, hole_range: range, tee_box_name: str | None
+) -> tuple[int, int]:
+    total_par = (
+        sum(course.scorecard[i].par for i in hole_range) if course.scorecard else None
+    )
+    total_yards = (
+        sum(course.scorecard[i].tees[tee_box_name].yards for i in hole_range)
+        if course.scorecard and tee_box_name
+        else None
+    )
+    return total_par, total_yards
 
-        new_scorecard[hole_number_str] = RoundHole(
-            score=score, par=par, yards=yards, handicap=handicap
-        )
 
-    return new_scorecard
+def sync_info_with_scorecard(
+    scorecard: RoundScorecard,
+    tee_box_index: int | None,
+    course: Course,
+    scorecard_mode: ScorecardModeEnum,
+) -> RoundScorecard:
+    tee_box_name = get_tee_box_name(tee_box_index)
+
+    match scorecard_mode:
+        case ScorecardModeEnum.total_score:
+            total_par, total_yards = calculate_par_and_yards(
+                course, range(course.num_holes), tee_box_name
+            )
+            return {
+                "total": {
+                    "score": scorecard["total"],
+                    "par": total_par,
+                    "yards": total_yards,
+                }
+            }
+
+        case ScorecardModeEnum.front_and_back:
+            front_par, front_yards = calculate_par_and_yards(
+                course, range(9), tee_box_name
+            )
+            back_par, back_yards = calculate_par_and_yards(
+                course, range(9, 18), tee_box_name
+            )
+            return {
+                "front": {
+                    "score": scorecard["front"],
+                    "par": front_par,
+                    "yards": front_yards,
+                },
+                "back": {
+                    "score": scorecard["back"],
+                    "par": back_par,
+                    "yards": back_yards,
+                },
+            }
+
+        case ScorecardModeEnum.all_holes:
+            new_scorecard = {}
+            for hole_number in range(1, course.num_holes + 1):
+                par = (
+                    course.scorecard[hole_number - 1].par if course.scorecard else None
+                )
+                yards = (
+                    course.scorecard[hole_number - 1].tees[tee_box_name].yards
+                    if course.scorecard and tee_box_name
+                    else None
+                )
+                handicap = (
+                    course.scorecard[hole_number - 1].handicap
+                    if course.scorecard
+                    else None
+                )
+                new_scorecard[str(hole_number)] = {
+                    "score": scorecard.get(str(hole_number), None),
+                    "par": par,
+                    "yards": yards,
+                    "handicap": handicap,
+                }
+            return new_scorecard
 
 
 @rounds_router.post(
@@ -89,8 +172,13 @@ async def post_round(
     ),  # Ensure the course ID provided actually exists
 ):
 
-    new_scorecard = sync_hole_info_with_scorecard(
-        round_post.scorecard, round_post.tee_box_index, course
+    validate_scorecard(round_post.scorecard_mode, round_post.scorecard, course)
+
+    new_scorecard = sync_info_with_scorecard(
+        round_post.scorecard,
+        round_post.tee_box_index,
+        course,
+        round_post.scorecard_mode,
     )
 
     finalized_round = Round(

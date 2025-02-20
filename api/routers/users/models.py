@@ -20,13 +20,6 @@ class User(BaseModel):
     rounds: list[PyObjectId] = Field(default=[])
 
 
-class UserPreview(BaseModel):
-
-    id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    name: str
-    username: str
-
-
 class LoginUser(BaseModel):
     username_or_email: str
     password: str

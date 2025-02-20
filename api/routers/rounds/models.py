@@ -1,19 +1,19 @@
 from datetime import datetime
+from enum import Enum
 from typing import Annotated, Optional
 
 from pydantic import BaseModel, Field
 
 from ...utils import PyObjectId
 
-
-class RoundHole(BaseModel):
-    score: int | None
-    par: int | None
-    yards: int | None
-    handicap: int | None
+RoundScorecard = dict[str, dict[str, int]]
+ScoreRange = Annotated[int, Field(gt=0)]
 
 
-ScoreRange = Annotated[int, Field(gt=0, lt=100)]
+class ScorecardModeEnum(str, Enum):
+    all_holes = "all-holes"
+    front_and_back = "front-and-back"
+    total_score = "total-score"
 
 
 class RoundPost(BaseModel):
@@ -21,7 +21,8 @@ class RoundPost(BaseModel):
     course_id: str
     tee_box_index: Optional[int]
     caption: Optional[str]
-    scorecard: dict[str, Optional[ScoreRange]]
+    scorecard_mode: ScorecardModeEnum
+    scorecard: dict[str, ScoreRange]
 
 
 class Round(BaseModel):
@@ -32,5 +33,5 @@ class Round(BaseModel):
         int
     ]  # Index of the selected tee box in the course's tee_boxes array
     caption: Optional[str]
-    scorecard: dict[str, RoundHole]
+    scorecard: RoundScorecard
     date_posted: datetime
