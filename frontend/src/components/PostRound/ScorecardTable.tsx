@@ -396,7 +396,9 @@ function ScorecardTable({
               <Form.Control
                 min="0"
                 value={scores[holeNumber.toString()]}
-                onChange={(e) => onScoreChange(holeNumber, e.target.value)}
+                onChange={(e) =>
+                  onScoreChange(holeNumber.toString(), e.target.value)
+                }
                 className="p-1 text-center"
               />
             </td>

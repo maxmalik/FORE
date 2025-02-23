@@ -4,6 +4,17 @@ const API_URL = getApiUrl();
 
 export type ScorecardMode = "all-holes" | "front-and-back" | "total-score";
 
+export type Round = {
+  id: string;
+  user_id: string;
+  course_id: string;
+  tee_box_index: number;
+  caption: string;
+  scorecard_mode: ScorecardMode;
+  scorecard: Record<string, Record<string, number>>;
+  date_posted: Date;
+};
+
 export async function postRound(
   userId: string,
   courseId: string,
@@ -35,6 +46,32 @@ export async function postRound(
     });
 
     return response;
+  } catch (error) {
+    //alert("Error occured while calling register API: " + error);
+    throw error;
+  }
+}
+
+export async function callGetRoundsApi(roundIds: string[]): Promise<Round[]> {
+  const endpoint: string = "rounds/";
+
+  const params = new URLSearchParams();
+
+  roundIds.forEach((roundId) => params.append("ids", roundId));
+
+  const url: string = `${API_URL}/${endpoint}?${params.toString()}`;
+
+  try {
+    const response: Response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const body = await response.json();
+
+    return body as Round[];
   } catch (error) {
     //alert("Error occured while calling register API: " + error);
     throw error;

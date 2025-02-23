@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
+import CloseButton from "react-bootstrap/CloseButton";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 import Spinner from "react-bootstrap/Spinner";
@@ -32,6 +34,7 @@ function PostRound() {
   useState(false);
   const [scores, setScores] = useState<Record<string, string>>({});
   const [redirectCountdown, setRedirectCountdown] = useState(3); // Countdown in seconds
+  const [showAlert, setShowAlert] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -73,7 +76,10 @@ function PostRound() {
   }
 
   function handleScoreChange(key: string, score: string) {
-    if ((score !== "" && isNaN(Number(score))) || score.length > 2) {
+    if (
+      (score !== "" && isNaN(Number(score))) ||
+      (score.length > 2 && scorecardMode !== "total-score")
+    ) {
       return;
     }
     const updatedScores = { ...scores };
@@ -94,15 +100,17 @@ function PostRound() {
 
     const courseId = selectedCourse!.id;
 
-    let scorecard: Record<string, number | null> = {};
+    let scorecard: Record<string, number> = {};
 
-    Object.entries(scores).forEach(([holeNumber, score]) => {
+    for (const [holeNumber, score] of Object.entries(scores)) {
       if (score === "") {
-        scorecard[holeNumber] = null;
+        setShowAlert(true);
+        setStatus("none");
+        return;
       } else {
         scorecard[holeNumber] = Number(score);
       }
-    });
+    }
 
     const response = await postRound(
       userId,
@@ -195,6 +203,15 @@ function PostRound() {
                     scores={scores}
                     scorecardMode={scorecardMode}
                   />
+                  <Alert variant="danger" show={showAlert} className="m-0 p-2">
+                    <div className="d-flex">
+                      Please complete the scorecard.
+                      <CloseButton
+                        onClick={() => setShowAlert(false)}
+                        className="ms-2"
+                      />
+                    </div>
+                  </Alert>
                 </div>
                 <ScorecardTable
                   scorecardMode={scorecardMode}

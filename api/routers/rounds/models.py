@@ -20,7 +20,7 @@ class RoundPost(BaseModel):
     user_id: str
     course_id: str
     tee_box_index: Optional[int]
-    caption: Optional[str]
+    caption: Optional[str] = None
     scorecard_mode: ScorecardModeEnum
     scorecard: dict[str, ScoreRange]
 
@@ -33,5 +33,6 @@ class Round(BaseModel):
         int
     ]  # Index of the selected tee box in the course's tee_boxes array
     caption: Optional[str]
+    scorecard_mode: ScorecardModeEnum
     scorecard: RoundScorecard
     date_posted: datetime

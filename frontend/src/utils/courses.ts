@@ -1,5 +1,10 @@
 import { getApiUrl } from "./utils";
 
+export type HoleTeeBox = {
+  color: string;
+  yards: number;
+};
+
 export type TeeBox = {
   tee: string;
   slope: number;
@@ -10,7 +15,7 @@ export type TeeBox = {
 export type Hole = {
   hole_number: number;
   par: number;
-  tees: Record<string, Record<string, string | number>>;
+  tees: Record<string, HoleTeeBox>;
   handicap: number;
 };
 

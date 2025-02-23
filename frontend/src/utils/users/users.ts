@@ -1,4 +1,8 @@
-import { NavigateFunction } from 'react-router-dom';
+import { NavigateFunction } from "react-router-dom";
+
+import { getApiUrl } from "../utils";
+
+const API_URL = getApiUrl();
 
 export type User = {
   id: string;
@@ -6,6 +10,7 @@ export type User = {
   username: string;
   email: string;
   password_hash: string;
+  rounds: string[];
 };
 
 export function updateIfNotSpace(
@@ -31,4 +36,25 @@ export function getUserData(): User {
 export function logout(navigate: NavigateFunction): void {
   localStorage.removeItem("userData");
   navigate("/");
+}
+
+export async function callGetUserApi(userId: string): Promise<User> {
+  const endpoint: string = `users/${userId}`;
+
+  const url: string = `${API_URL}/${endpoint}`;
+
+  try {
+    const response: Response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const body = await response.json();
+    return body as User;
+  } catch (error) {
+    //alert("Error occured while calling register API: " + error);
+    throw error;
+  }
 }
