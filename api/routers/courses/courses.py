@@ -35,7 +35,6 @@ async def search_courses(
 async def get_course(
     course_id: str,
     courses_collection: AsyncIOMotorCollection,
-    fields: str = None,
 ) -> Course:
 
     try:
@@ -43,13 +42,7 @@ async def get_course(
     except InvalidId as exception:
         raise HTTPException(status_code=422, detail="Invalid Course ID") from exception
 
-    if fields:
-        projection = {field: 1 for field in fields.split(",")}
-        projection["_id"] = 1  # Ensure "_id" is always included
-    else:
-        projection = None
-
-    course = await courses_collection.find_one({"_id": course_object_id}, projection)
+    course = await courses_collection.find_one({"_id": course_object_id})
 
     if course is None:
         raise HTTPException(status_code=404, detail="Course not found")
@@ -62,11 +55,6 @@ async def get_course(
 )
 async def get_course_api(
     course_id: str,
-    fields: str = Query(None, description="Comma-separated list of fields to return"),
     courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
 ):
-    return await get_course(
-        ObjectId(course_id),
-        courses_collection,
-        fields,
-    )
+    return await get_course(ObjectId(course_id), courses_collection)

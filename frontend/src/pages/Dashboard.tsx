@@ -38,8 +38,11 @@ function Dashboard() {
       <ForeNavbar pageName="Main" />
       <Container className="my-3">
         <h1 className="mb-3">Dashboard</h1>
-        <Handicap />
-        {userRounds && <RoundsFeed rounds={userRounds} />}
+        {userRounds && (
+          <>
+            <Handicap rounds={userRounds} /> <RoundsFeed rounds={userRounds} />
+          </>
+        )}
       </Container>
     </>
   );

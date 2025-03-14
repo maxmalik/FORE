@@ -1,9 +1,15 @@
+import heapq
+
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorCollection
 
 from ...db import get_collection
+from ..courses.courses import get_course_api
+from ..courses.models import Course
+from ..rounds.models import Round, RoundScorecard
+from ..rounds.rounds import get_rounds
 from .models import LoginUser, RegisterUser, User
 from .utils import get_password_hash, verify_password
 
@@ -135,7 +141,6 @@ async def email_taken(
 async def get_user(
     user_id: str,
     users_collection: AsyncIOMotorCollection,
-    fields: str = None,
 ) -> User:
 
     try:
@@ -143,13 +148,7 @@ async def get_user(
     except InvalidId as exception:
         raise HTTPException(status_code=422, detail="Invalid User ID") from exception
 
-    if fields:
-        projection = {field: 1 for field in fields.split(",")}
-
-    else:
-        projection = None
-
-    user = await users_collection.find_one({"_id": user_object_id}, projection)
+    user = await users_collection.find_one({"_id": user_object_id})
 
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -160,11 +159,69 @@ async def get_user(
 @users_router.get("/{user_id}")
 async def get_user_api(
     user_id: str,
-    fields: str = Query(None, description="Comma-separated list of fields to return"),
     users_collection: AsyncIOMotorCollection = Depends(get_collection("users")),
 ):
     return await get_user(
         ObjectId(user_id),
         users_collection,
-        fields,
     )
+
+
+HANDICAP_ADJUSTMENTS = {3: -2, 4: -1, 5: 0, 6: -1}
+
+def course_handicap(player_handicap: float, slope_rating: float, course_rating: float, course_par: int ) -> float:
+    return player_handicap * (slope_rating / 113 ) + (course_rating) - course_par
+
+def adjust_hole_scores(scorecard: RoundScorecard, player_handicap: float | None, slope_rating: float | None, course_rating: float | None):
+
+    for hole in scorecard.values():
+        if not player_handicap:
+            hole["score"] = min(hole["score"], hole["par"] + 5)
+        else:
+
+
+
+def score_differential():
+
+async def calculate_handicap(
+    rounds: list[Round], course_data: dict[str, Course]
+) -> float:
+
+    heap = []
+
+    for round in rounds:
+
+        if round.course_id not in course_data:
+            course_data[round.course_id] = await get_course_api(round.course_id)
+
+        course = course_data[round.course_id]
+
+
+@users_router.get("/{user_id}/handicap")
+async def get_user_handicap_data(
+    user_id: str,
+    users_collection: AsyncIOMotorCollection = Depends(get_collection("users")),
+    rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),
+    courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
+    user=Depends(get_user_api),
+):
+
+    if len(user.rounds) < 3:
+        raise HTTPException(
+            status_code=400, detail="Cannot calculate handicap with less than 3 rounds"
+        )
+
+    rounds = get_rounds(user.rounds)
+
+    # Reverse rounds array because they are stored in database from present to past
+    rounds_chronological = reversed(rounds)
+
+    handicaps = []
+
+    # Compute the handicap after each round played
+    for round_number in range(3, len(rounds_chronological)):
+
+        # TODO: Get the required course data beforehand
+
+        handicap = calculate_handicap(rounds_chronological[:round_number])
+        handicaps.append([rounds_chronological[round_number].date_posted, handicap])
