@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
@@ -11,6 +12,11 @@ PASSWORD_PATTERN = re.compile(
 )
 
 
+class HandicapData(BaseModel):
+    date: datetime
+    handicap: float
+
+
 class User(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     name: str
@@ -18,6 +24,7 @@ class User(BaseModel):
     email: str
     password_hash: str
     rounds: list[PyObjectId] = Field(default=[])
+    handicap_data: list[HandicapData] = Field(default=[])
 
 
 class LoginUser(BaseModel):

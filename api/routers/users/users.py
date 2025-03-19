@@ -6,10 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorCollection
 
 from ...db import get_collection
-from ..courses.courses import get_course_api
-from ..courses.models import Course
-from ..rounds.models import Round, RoundScorecard
-from ..rounds.rounds import get_rounds
 from .models import LoginUser, RegisterUser, User
 from .utils import get_password_hash, verify_password
 
@@ -165,63 +161,3 @@ async def get_user_api(
         ObjectId(user_id),
         users_collection,
     )
-
-
-HANDICAP_ADJUSTMENTS = {3: -2, 4: -1, 5: 0, 6: -1}
-
-def course_handicap(player_handicap: float, slope_rating: float, course_rating: float, course_par: int ) -> float:
-    return player_handicap * (slope_rating / 113 ) + (course_rating) - course_par
-
-def adjust_hole_scores(scorecard: RoundScorecard, player_handicap: float | None, slope_rating: float | None, course_rating: float | None):
-
-    for hole in scorecard.values():
-        if not player_handicap:
-            hole["score"] = min(hole["score"], hole["par"] + 5)
-        else:
-
-
-
-def score_differential():
-
-async def calculate_handicap(
-    rounds: list[Round], course_data: dict[str, Course]
-) -> float:
-
-    heap = []
-
-    for round in rounds:
-
-        if round.course_id not in course_data:
-            course_data[round.course_id] = await get_course_api(round.course_id)
-
-        course = course_data[round.course_id]
-
-
-@users_router.get("/{user_id}/handicap")
-async def get_user_handicap_data(
-    user_id: str,
-    users_collection: AsyncIOMotorCollection = Depends(get_collection("users")),
-    rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),
-    courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
-    user=Depends(get_user_api),
-):
-
-    if len(user.rounds) < 3:
-        raise HTTPException(
-            status_code=400, detail="Cannot calculate handicap with less than 3 rounds"
-        )
-
-    rounds = get_rounds(user.rounds)
-
-    # Reverse rounds array because they are stored in database from present to past
-    rounds_chronological = reversed(rounds)
-
-    handicaps = []
-
-    # Compute the handicap after each round played
-    for round_number in range(3, len(rounds_chronological)):
-
-        # TODO: Get the required course data beforehand
-
-        handicap = calculate_handicap(rounds_chronological[:round_number])
-        handicaps.append([rounds_chronological[round_number].date_posted, handicap])

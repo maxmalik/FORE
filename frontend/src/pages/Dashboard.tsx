@@ -25,6 +25,11 @@ function Dashboard() {
 
       const user = await fetchUser(userId);
 
+      if (!user.rounds || user.rounds.length === 0) {
+        setUserRounds([]);
+        return;
+      }
+
       const rounds = await fetchUserRounds(user.rounds);
 
       setUserRounds(rounds);

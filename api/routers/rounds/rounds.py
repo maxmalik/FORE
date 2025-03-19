@@ -2,11 +2,12 @@ from datetime import datetime, timezone
 
 from bson import ObjectId
 from bson.errors import InvalidId
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorCollection
 
 from ...db import get_collection
 from ..courses.courses import Course, get_course
+from ..users.handicap import calculate_score_differential, calculate_updated_handicap
 from ..users.users import User, get_user
 from .models import Round, RoundPost, RoundScorecard, ScorecardModeEnum
 
@@ -163,6 +164,7 @@ def sync_info_with_scorecard(
 )
 async def post_round(
     round_post: RoundPost,
+    background_tasks: BackgroundTasks,
     users_collection: AsyncIOMotorCollection = Depends(get_collection("users")),
     courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
     rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),
@@ -181,6 +183,21 @@ async def post_round(
         round_post.scorecard_mode,
     )
 
+    if user.handicap_data:
+        current_user_handicap = user.handicap_data[-1].handicap
+    else:
+        current_user_handicap = None
+
+    score_differential = calculate_score_differential(
+        new_scorecard,
+        round_post.scorecard_mode,
+        round_post.tee_box_index,
+        course,
+        current_user_handicap,
+    )
+
+    date_posted = datetime.now(tz=timezone.utc)
+
     finalized_round = Round(
         user_id=round_post.user_id,
         course_id=round_post.course_id,
@@ -188,20 +205,21 @@ async def post_round(
         caption=round_post.caption,
         scorecard_mode=round_post.scorecard_mode,
         scorecard=new_scorecard,
-        date_posted=datetime.now(tz=timezone.utc),
+        score_differential=score_differential,
+        date_posted=date_posted,
     ).model_dump(exclude=["id"])
 
     # Add the round to the rounds collection
     insert_round_result = await rounds_collection.insert_one(finalized_round)
 
-    # Add the round to the user's rounds list
-    await users_collection.update_one(
-        {"_id": ObjectId(user.id)},
-        {
-            "$push": {
-                "rounds": {"$each": [insert_round_result.inserted_id], "$position": 0}
-            }
-        },
+    background_tasks.add_task(
+        update_user,
+        user.id,
+        user.rounds,
+        insert_round_result.inserted_id,
+        date_posted,
+        users_collection,
+        rounds_collection,
     )
 
     # Add the round to the course's rounds list
@@ -221,6 +239,42 @@ async def post_round(
     return created_round
 
 
+# Update the user's rounds list and handicap data after they post a round
+async def update_user(
+    user_id: ObjectId,
+    round_ids: list[ObjectId],
+    inserted_round_id: ObjectId,
+    date_posted: datetime,
+    users_collection: AsyncIOMotorCollection,
+    rounds_collection: AsyncIOMotorCollection,
+):
+
+    new_round_ids = round_ids + [inserted_round_id]
+    new_round_id_strings = [str(id) for id in new_round_ids]
+
+    push_query = {"rounds": {"$each": [inserted_round_id], "$position": 0}}
+
+    if len(new_round_ids) >= 3:
+        rounds = await get_rounds(new_round_id_strings, rounds_collection)
+        new_handicap = calculate_updated_handicap(
+            [round.score_differential for round in rounds]
+        )
+
+        push_query["handicap_data"] = {
+            "$each": [
+                {
+                    "handicap": new_handicap,
+                    "date": date_posted,
+                }
+            ]
+        }
+
+    await users_collection.update_one(
+        {"_id": user_id},
+        {"$push": push_query},
+    )
+
+
 @rounds_router.get(
     "/",
     response_model=list[Round],
@@ -232,7 +286,7 @@ async def get_rounds(
     rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),
 ):
     try:
-        object_ids = [ObjectId(id) for id in ids]
+        object_ids = [ObjectId(id) if isinstance(id, str) else id for id in ids]
     except InvalidId as exception:
         raise HTTPException(status_code=422, detail="Invalid Round ID") from exception
 

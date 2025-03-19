@@ -35,4 +35,5 @@ class Round(BaseModel):
     caption: Optional[str]
     scorecard_mode: ScorecardModeEnum
     scorecard: RoundScorecard
+    score_differential: float
     date_posted: datetime

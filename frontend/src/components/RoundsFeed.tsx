@@ -6,6 +6,10 @@ interface RoundsFeedProps {
 }
 
 function RoundsFeed({ rounds }: RoundsFeedProps) {
+  if (!rounds || rounds.length === 0) {
+    return <h4>No rounds posted</h4>;
+  }
+
   return (
     <>
       {rounds.map((round) => (
