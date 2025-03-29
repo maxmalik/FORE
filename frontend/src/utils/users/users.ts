@@ -4,6 +4,11 @@ import { getApiUrl } from "../utils";
 
 const API_URL = getApiUrl();
 
+export type HandicapData = {
+  date: Date;
+  handicap: number;
+};
+
 export type User = {
   id: string;
   name: string;
@@ -11,6 +16,7 @@ export type User = {
   email: string;
   password_hash: string;
   rounds: string[];
+  handicap_data: HandicapData[];
 };
 
 export function updateIfNotSpace(

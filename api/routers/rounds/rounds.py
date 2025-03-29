@@ -7,7 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorCollection
 
 from ...db import get_collection
 from ..courses.courses import Course, get_course
-from ..users.handicap import calculate_score_differential, calculate_updated_handicap
+from ..users.handicap import calculate_handicap, calculate_score_differential
 from ..users.users import User, get_user
 from .models import Round, RoundPost, RoundScorecard, ScorecardModeEnum
 
@@ -77,7 +77,7 @@ def get_tee_box_name(tee_box_index: int | None) -> str | None:
 
 def calculate_par_and_yards(
     course: Course, hole_range: range, tee_box_name: str | None
-) -> tuple[int, int]:
+) -> tuple[int | None, int | None]:
     total_par = (
         sum(course.scorecard[i].par for i in hole_range) if course.scorecard else None
     )
@@ -158,9 +158,7 @@ def sync_info_with_scorecard(
 @rounds_router.post(
     "/",
     response_description="Post a new round",
-    response_model=Round,
     status_code=status.HTTP_201_CREATED,
-    response_model_by_alias=False,
 )
 async def post_round(
     round_post: RoundPost,
@@ -168,8 +166,10 @@ async def post_round(
     users_collection: AsyncIOMotorCollection = Depends(get_collection("users")),
     courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
     rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),
-    user=Depends(verify_and_get_user),  # Ensure the user ID provided actually exists
-    course=Depends(
+    user: User = Depends(
+        verify_and_get_user
+    ),  # Ensure the user ID provided actually exists
+    course: Course = Depends(
         verify_and_get_course
     ),  # Ensure the course ID provided actually exists
 ):
@@ -213,50 +213,42 @@ async def post_round(
     insert_round_result = await rounds_collection.insert_one(finalized_round)
 
     background_tasks.add_task(
-        update_user,
+        update_user_after_post,
         user.id,
         user.rounds,
-        insert_round_result.inserted_id,
+        str(insert_round_result.inserted_id),
         date_posted,
         users_collection,
         rounds_collection,
     )
 
-    # Add the round to the course's rounds list
-    await courses_collection.update_one(
-        {"_id": ObjectId(course.id)},
-        {
-            "$push": {
-                "rounds": {"$each": [insert_round_result.inserted_id], "$position": 0}
-            }
-        },
+    background_tasks.add_task(
+        update_course_after_post,
+        course.id,
+        str(insert_round_result.inserted_id),
+        courses_collection,
     )
 
-    # Return the created round
-    created_round = await rounds_collection.find_one(
-        {"_id": insert_round_result.inserted_id}
-    )
-    return created_round
+    return {"detail": "success"}
 
 
 # Update the user's rounds list and handicap data after they post a round
-async def update_user(
-    user_id: ObjectId,
-    round_ids: list[ObjectId],
-    inserted_round_id: ObjectId,
+async def update_user_after_post(
+    user_id: str,
+    user_round_ids: list[str],
+    inserted_round_id: str,
     date_posted: datetime,
     users_collection: AsyncIOMotorCollection,
     rounds_collection: AsyncIOMotorCollection,
 ):
 
-    new_round_ids = round_ids + [inserted_round_id]
-    new_round_id_strings = [str(id) for id in new_round_ids]
+    new_round_ids = user_round_ids + [inserted_round_id]
 
-    push_query = {"rounds": {"$each": [inserted_round_id], "$position": 0}}
+    push_query = {"rounds": {"$each": [inserted_round_id]}}
 
     if len(new_round_ids) >= 3:
-        rounds = await get_rounds(new_round_id_strings, rounds_collection)
-        new_handicap = calculate_updated_handicap(
+        rounds = await get_rounds(new_round_ids, rounds_collection)
+        new_handicap = calculate_handicap(
             [round.score_differential for round in rounds]
         )
 
@@ -270,8 +262,19 @@ async def update_user(
         }
 
     await users_collection.update_one(
-        {"_id": user_id},
+        {"_id": ObjectId(user_id)},
         {"$push": push_query},
+    )
+
+
+async def update_course_after_post(
+    course_id: str,
+    inserted_round_id: str,
+    courses_collection: AsyncIOMotorCollection,
+):
+    await courses_collection.update_one(
+        {"_id": ObjectId(course_id)},
+        {"$push": {"rounds": {"$each": [inserted_round_id]}}},
     )
 
 
@@ -284,7 +287,7 @@ async def update_user(
 async def get_rounds(
     ids: list[str] = Query(...),
     rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),
-):
+) -> list[Round]:
     try:
         object_ids = [ObjectId(id) if isinstance(id, str) else id for id in ids]
     except InvalidId as exception:
@@ -292,4 +295,4 @@ async def get_rounds(
 
     rounds = await rounds_collection.find({"_id": {"$in": object_ids}}).to_list()
 
-    return rounds
+    return [Round(**round) for round in rounds]

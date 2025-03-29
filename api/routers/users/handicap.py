@@ -1,13 +1,19 @@
 import heapq
+from math import floor
+from statistics import mean
 
 from ...routers.courses.courses import Course
 from ...routers.courses.models import CourseHole
 from ...routers.rounds.models import Round
 from ..rounds.models import RoundScorecard, ScorecardModeEnum
 
+# Maps the number of rounds the handicap is out of to the adjustment to be applied to the final handicap calculation
 HANDICAP_ADJUSTMENTS = {3: -2, 4: -1, 5: 0, 6: -1}
 
 NUM_ROUNDS_TO_LOWEST_K = {
+    3: 1,
+    4: 1,
+    5: 1,
     6: 2,
     7: 2,
     8: 2,
@@ -53,11 +59,11 @@ def calculate_adjusted_gross_score(
     adjusted_gross_score = 0
 
     if scorecard_mode == ScorecardModeEnum.all_holes:
-        for hole in scorecard.values():
+        for hole_number, hole in scorecard.items():
 
             if player_handicap:
 
-                hole_index = int(hole) - 1
+                hole_index = int(hole_number) - 1
                 course_hole = course_scorecard[hole_index]
                 hole_stroke_index = course_hole.handicap
 
@@ -68,7 +74,9 @@ def calculate_adjusted_gross_score(
                 """
                 max_hole_score = course_hole.par + 2
                 if hole_stroke_index <= course_handicap:
-                    max_hole_score += 1
+                    max_hole_score += 1 + floor(
+                        (course_handicap - hole_stroke_index) / len(course_scorecard)
+                    )
                 adjusted_gross_score += min(hole["score"], max_hole_score)
 
             else:
@@ -97,12 +105,8 @@ def get_slope_and_course_rating(tee_box_index: int | None, course: Course):
     else:
         # Use the average slope and course rating for all tee boxes
         if course.tee_boxes:
-            slope_rating = sum([tee_box.slope for tee_box in course.tee_boxes]) / len(
-                course.tee_boxes
-            )
-            course_rating = sum(
-                [tee_box.handicap for tee_box in course.tee_boxes]
-            ) / len(course.tee_boxes)
+            slope_rating = mean([tee_box.slope for tee_box in course.tee_boxes])
+            course_rating = mean([tee_box.handicap for tee_box in course.tee_boxes])
 
         # Default to standard values
         else:
@@ -136,55 +140,14 @@ def calculate_score_differential(
     )
 
 
-def calculate_handicap(
-    rounds: list[Round], course_data: dict[str, Course], player_handicap: float = None
-) -> float:
-
-    heap = []
-
-    for round in rounds:
-
-        course = course_data[round.course_id]
-
-        score_differential = calculate_score_differential(
-            round.scorecard,
-            round.scorecard_mode,
-            round.tee_box_index,
-            course,
-            player_handicap,
-        )
-
-        heapq.heappush(heap, score_differential)
-
-    # If there are between 3 and 5 rounds, take the lowest score differential
-    if len(heap) >= 3 and len(heap) <= 5:
-        return heap[0] + HANDICAP_ADJUSTMENTS.get(len(heap), 0)
-
-    # If there are between 6 and 20 rounds, average the lowest k ( depending on the number of rounds (using lookup table)) score differentials
-    elif len(heap) >= 6 and len(heap) <= 19:
-        k = NUM_ROUNDS_TO_LOWEST_K[len(heap)]
-        return sum(heap[0:k]) / k + HANDICAP_ADJUSTMENTS.get(len(heap), 0)
-
-    # If there are 20 or more rounds, average the top 8 score differentials
-    else:
-        return sum(heap[0:8]) / 8
-
-
-def calculate_updated_handicap(score_differentials: list[float]) -> float:
+def calculate_handicap(score_differentials: list[float]) -> float:
 
     heap = []
     for score_differential in score_differentials:
         heapq.heappush(heap, score_differential)
 
-    # If there are between 3 and 5 rounds, take the lowest score differential
-    if len(heap) >= 3 and len(heap) <= 5:
-        return heap[0] + HANDICAP_ADJUSTMENTS.get(len(heap), 0)
+    num_rounds = len(heap)
 
-    # If there are between 6 and 20 rounds, average the lowest k ( depending on the number of rounds (using lookup table)) score differentials
-    elif len(heap) >= 6 and len(heap) <= 19:
-        k = NUM_ROUNDS_TO_LOWEST_K[len(heap)]
-        return sum(heap[0:k]) / k + HANDICAP_ADJUSTMENTS.get(len(heap), 0)
-
-    # If there are 20 or more rounds, average the top 8 score differentials
-    else:
-        return sum(heap[0:8]) / 8
+    # Average the lowest k score differentials, where k is determined by the number of score differentials used in the calculation
+    k = NUM_ROUNDS_TO_LOWEST_K.get(num_rounds, 0)
+    return mean(heap[0:k]) + HANDICAP_ADJUSTMENTS.get(num_rounds, 0)

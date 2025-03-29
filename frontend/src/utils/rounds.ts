@@ -12,6 +12,7 @@ export type Round = {
   caption: string;
   scorecard_mode: ScorecardMode;
   scorecard: Record<string, Record<string, number>>;
+  score_differential: number;
   date_posted: Date;
 };
 

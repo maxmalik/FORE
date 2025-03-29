@@ -5,10 +5,17 @@ import ForeNavbar from "../components/ForeNavbar";
 import Handicap from "../components/Handicap";
 import RoundsFeed from "../components/RoundsFeed";
 import { callGetRoundsApi, Round } from "../utils/rounds";
-import { callGetUserApi, getUserData, User } from "../utils/users/users";
+import {
+  callGetUserApi,
+  getUserData,
+  HandicapData,
+  User,
+} from "../utils/users/users";
 
 function Dashboard() {
-  const [userRounds, setUserRounds] = useState<Round[] | null>(null);
+  const [handicapData, setHandicapData] = useState<HandicapData[] | null>(null);
+
+  const [rounds, setRounds] = useState<Round[]>([]);
 
   // TODO: use something better than useEffect for fetching
   useEffect(() => {
@@ -25,14 +32,10 @@ function Dashboard() {
 
       const user = await fetchUser(userId);
 
-      if (!user.rounds || user.rounds.length === 0) {
-        setUserRounds([]);
-        return;
-      }
+      setHandicapData(user.handicap_data);
 
       const rounds = await fetchUserRounds(user.rounds);
-
-      setUserRounds(rounds);
+      setRounds(rounds);
     };
 
     fetchData();
@@ -43,9 +46,10 @@ function Dashboard() {
       <ForeNavbar pageName="Main" />
       <Container className="my-3">
         <h1 className="mb-3">Dashboard</h1>
-        {userRounds && (
+        {handicapData && (
           <>
-            <Handicap rounds={userRounds} /> <RoundsFeed rounds={userRounds} />
+            <Handicap handicapData={handicapData} />{" "}
+            <RoundsFeed rounds={rounds} />
           </>
         )}
       </Container>
