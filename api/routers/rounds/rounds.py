@@ -9,7 +9,7 @@ from ...db import get_collection
 from ..courses.courses import Course, get_course
 from ..users.handicap import calculate_handicap, calculate_score_differential
 from ..users.users import User, get_user
-from .models import Round, RoundPost, RoundScorecard, ScorecardModeEnum
+from .models import Round, RoundGet, RoundPost, RoundScorecard, ScorecardModeEnum
 
 rounds_router = APIRouter()
 
@@ -38,11 +38,13 @@ async def verify_and_get_course(
     return course
 
 
+# Raises an error if there is an issue with the scorecard
 def validate_scorecard(
-    scorecard_mode: ScorecardModeEnum, scorecard: dict[str, int], course: Course
-):
+    scorecard_mode: ScorecardModeEnum, scorecard: dict[str, int], course_num_holes: int
+) -> None:
     if scorecard_mode == ScorecardModeEnum.all_holes:
-        for hole_number in range(1, course.num_holes + 1):
+        # Ensure scores for all holes are provided in the scorecard
+        for hole_number in range(1, course_num_holes + 1):
             if str(hole_number) not in scorecard:
                 raise HTTPException(
                     status_code=422,
@@ -50,7 +52,8 @@ def validate_scorecard(
                 )
 
     elif scorecard_mode == ScorecardModeEnum.front_and_back:
-        if course.num_holes != 18:
+        # Ensure course is 18 holes and both front and back 9 scores are provided
+        if course_num_holes != 18:
             raise HTTPException(
                 status_code=422,
                 detail="Cannot use front and back mode if course is not 18 holes",
@@ -65,6 +68,7 @@ def validate_scorecard(
             )
 
     elif scorecard_mode == ScorecardModeEnum.total_score:
+        # Ensure the total score is provided
         if "total" not in scorecard:
             raise HTTPException(
                 status_code=422, detail="Total not provided in scorecard"
@@ -73,86 +77,6 @@ def validate_scorecard(
 
 def get_tee_box_name(tee_box_index: int | None) -> str | None:
     return f"teeBox{tee_box_index+1}" if tee_box_index is not None else None
-
-
-def calculate_par_and_yards(
-    course: Course, hole_range: range, tee_box_name: str | None
-) -> tuple[int | None, int | None]:
-    total_par = (
-        sum(course.scorecard[i].par for i in hole_range) if course.scorecard else None
-    )
-    total_yards = (
-        sum(course.scorecard[i].tees[tee_box_name].yards for i in hole_range)
-        if course.scorecard and tee_box_name
-        else None
-    )
-    return total_par, total_yards
-
-
-def sync_info_with_scorecard(
-    scorecard: RoundScorecard,
-    tee_box_index: int | None,
-    course: Course,
-    scorecard_mode: ScorecardModeEnum,
-) -> RoundScorecard:
-    tee_box_name = get_tee_box_name(tee_box_index)
-
-    match scorecard_mode:
-        case ScorecardModeEnum.total_score:
-            total_par, total_yards = calculate_par_and_yards(
-                course, range(course.num_holes), tee_box_name
-            )
-            return {
-                "total": {
-                    "score": scorecard["total"],
-                    "par": total_par,
-                    "yards": total_yards,
-                }
-            }
-
-        case ScorecardModeEnum.front_and_back:
-            front_par, front_yards = calculate_par_and_yards(
-                course, range(9), tee_box_name
-            )
-            back_par, back_yards = calculate_par_and_yards(
-                course, range(9, 18), tee_box_name
-            )
-            return {
-                "front": {
-                    "score": scorecard["front"],
-                    "par": front_par,
-                    "yards": front_yards,
-                },
-                "back": {
-                    "score": scorecard["back"],
-                    "par": back_par,
-                    "yards": back_yards,
-                },
-            }
-
-        case ScorecardModeEnum.all_holes:
-            new_scorecard = {}
-            for hole_number in range(1, course.num_holes + 1):
-                par = (
-                    course.scorecard[hole_number - 1].par if course.scorecard else None
-                )
-                yards = (
-                    course.scorecard[hole_number - 1].tees[tee_box_name].yards
-                    if course.scorecard and tee_box_name
-                    else None
-                )
-                handicap = (
-                    course.scorecard[hole_number - 1].handicap
-                    if course.scorecard
-                    else None
-                )
-                new_scorecard[str(hole_number)] = {
-                    "score": scorecard.get(str(hole_number), None),
-                    "par": par,
-                    "yards": yards,
-                    "handicap": handicap,
-                }
-            return new_scorecard
 
 
 @rounds_router.post(
@@ -172,15 +96,10 @@ async def post_round(
     course: Course = Depends(
         verify_and_get_course
     ),  # Ensure the course ID provided actually exists
-):
+) -> dict:
 
-    validate_scorecard(round_post.scorecard_mode, round_post.scorecard, course)
-
-    new_scorecard = sync_info_with_scorecard(
-        round_post.scorecard,
-        round_post.tee_box_index,
-        course,
-        round_post.scorecard_mode,
+    validate_scorecard(
+        round_post.scorecard_mode, round_post.scorecard, course.num_holes
     )
 
     if user.handicap_data:
@@ -189,7 +108,7 @@ async def post_round(
         current_user_handicap = None
 
     score_differential = calculate_score_differential(
-        new_scorecard,
+        round_post.scorecard,
         round_post.scorecard_mode,
         round_post.tee_box_index,
         course,
@@ -204,7 +123,7 @@ async def post_round(
         tee_box_index=round_post.tee_box_index,
         caption=round_post.caption,
         scorecard_mode=round_post.scorecard_mode,
-        scorecard=new_scorecard,
+        scorecard=round_post.scorecard,
         score_differential=score_differential,
         date_posted=date_posted,
     ).model_dump(exclude=["id"])
@@ -240,7 +159,7 @@ async def update_user_after_post(
     date_posted: datetime,
     users_collection: AsyncIOMotorCollection,
     rounds_collection: AsyncIOMotorCollection,
-):
+) -> None:
 
     new_round_ids = user_round_ids + [inserted_round_id]
 
@@ -271,7 +190,7 @@ async def update_course_after_post(
     course_id: str,
     inserted_round_id: str,
     courses_collection: AsyncIOMotorCollection,
-):
+) -> None:
     await courses_collection.update_one(
         {"_id": ObjectId(course_id)},
         {"$push": {"rounds": {"$each": [inserted_round_id]}}},
@@ -280,14 +199,19 @@ async def update_course_after_post(
 
 @rounds_router.get(
     "/",
-    response_model=list[Round],
     description="Get multiple rounds given their IDs",
+    response_model=list[RoundGet],
     response_model_by_alias=False,
 )
 async def get_rounds(
     ids: list[str] = Query(...),
+    retrieve_course_data: bool = Query(
+        False, description="Whether to retrieve course data for the rounds's courses"
+    ),
     rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),
-) -> list[Round]:
+    courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
+) -> list[RoundGet]:
+
     try:
         object_ids = [ObjectId(id) if isinstance(id, str) else id for id in ids]
     except InvalidId as exception:
@@ -295,4 +219,12 @@ async def get_rounds(
 
     rounds = await rounds_collection.find({"_id": {"$in": object_ids}}).to_list()
 
-    return [Round(**round) for round in rounds]
+    if retrieve_course_data:
+        for round in rounds:
+            course = await courses_collection.find_one(
+                {"_id": ObjectId(round["course_id"])}
+            )
+            if course:
+                round["course"] = course
+
+    return [RoundGet(**round) for round in rounds]

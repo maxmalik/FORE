@@ -2,12 +2,13 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from ...utils import PyObjectId
+from ..courses.models import Course
 
-RoundScorecard = dict[str, dict[str, int]]
 ScoreRange = Annotated[int, Field(gt=0)]
+RoundScorecard = dict[str, ScoreRange]
 
 
 class ScorecardModeEnum(str, Enum):
@@ -22,7 +23,7 @@ class RoundPost(BaseModel):
     tee_box_index: Optional[int]
     caption: Optional[str] = None
     scorecard_mode: ScorecardModeEnum
-    scorecard: dict[str, ScoreRange]
+    scorecard: RoundScorecard
 
 
 class Round(BaseModel):
@@ -37,3 +38,7 @@ class Round(BaseModel):
     scorecard: RoundScorecard
     score_differential: float
     date_posted: datetime
+
+
+class RoundGet(Round):
+    course_data: Optional[Course]

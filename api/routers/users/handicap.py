@@ -59,12 +59,13 @@ def calculate_adjusted_gross_score(
     adjusted_gross_score = 0
 
     if scorecard_mode == ScorecardModeEnum.all_holes:
-        for hole_number, hole in scorecard.items():
+        for hole_number, score in scorecard.items():
+
+            hole_index = int(hole_number) - 1
+            course_hole = course_scorecard[hole_index]
 
             if player_handicap:
 
-                hole_index = int(hole_number) - 1
-                course_hole = course_scorecard[hole_index]
                 hole_stroke_index = course_hole.handicap
 
                 """
@@ -77,21 +78,21 @@ def calculate_adjusted_gross_score(
                     max_hole_score += 1 + floor(
                         (course_handicap - hole_stroke_index) / len(course_scorecard)
                     )
-                adjusted_gross_score += min(hole["score"], max_hole_score)
+                adjusted_gross_score += min(score, max_hole_score)
 
             else:
                 """
                 For players posting initial scores to establish a Handicap Index,
                 the maximum hole score is limited to par + 5
                 """
-                adjusted_gross_score += min(hole["score"], hole["par"] + 5)
+                adjusted_gross_score += min(score, course_hole.par + 5)
 
     elif scorecard_mode == ScorecardModeEnum.front_and_back:
-        adjusted_gross_score += scorecard["front"]["score"]
-        adjusted_gross_score += scorecard["back"]["score"]
+        adjusted_gross_score += scorecard["front"]
+        adjusted_gross_score += scorecard["back"]
 
     else:
-        adjusted_gross_score = scorecard["total"]["score"]
+        adjusted_gross_score = scorecard["total"]
 
     return adjusted_gross_score
 
