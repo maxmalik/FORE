@@ -140,10 +140,10 @@ function ScorecardTable({
         <thead>
           <tr>
             <th className="align-middle"></th>
-            <th key={"front"} className="text-center align-middle">
+            <th key="front" className="text-center align-middle">
               OUT
             </th>
-            <th key={"back"} className="text-center align-middle">
+            <th key="back" className="text-center align-middle">
               IN
             </th>
             <th className="text-center align-middle px-2">Total</th>
@@ -153,12 +153,12 @@ function ScorecardTable({
           {course.tee_boxes.length > 0 && (
             <tr>
               <td className="align-middle">Par</td>
-              <td key={"front"} className="text-center align-middle">
+              <td key="front" className="text-center align-middle">
                 {course.scorecard
                   .slice(0, 9)
                   .reduce((acc, hole) => acc + hole.par, 0)}
               </td>
-              <td key={"back"} className="text-center align-middle">
+              <td key="back" className="text-center align-middle">
                 {course.scorecard
                   .slice(9, 18)
                   .reduce((acc, hole) => acc + hole.par, 0)}
@@ -185,7 +185,7 @@ function ScorecardTable({
                   </Button>
                 </div>
               </td>
-              <td key={"front"} className="text-center align-middle">
+              <td key="front" className="text-center align-middle">
                 {teeBoxIndex !== -1
                   ? course.scorecard
                       .slice(0, 9)
@@ -196,7 +196,7 @@ function ScorecardTable({
                       )
                   : " "}
               </td>
-              <td key={"back"} className="text-center align-middle">
+              <td key="back" className="text-center align-middle">
                 {teeBoxIndex !== -1
                   ? course.scorecard
                       .slice(9, 18)
@@ -218,7 +218,7 @@ function ScorecardTable({
           <tr className="table-active">
             <td className="align-middle">Score</td>
             <td
-              key={"front"}
+              key="front"
               style={{ width: "40px" }}
               className="text-center align-middle"
             >
@@ -230,7 +230,7 @@ function ScorecardTable({
               />
             </td>
             <td
-              key={"back"}
+              key="back"
               style={{ width: "40px" }}
               className="text-center align-middle"
             >
@@ -298,7 +298,7 @@ function ScorecardTable({
           <tr className="table-active">
             <td className="align-middle">Score</td>
             <td
-              key={"front"}
+              key="front"
               style={{ width: "40px" }}
               className="text-center align-middle"
             >

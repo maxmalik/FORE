@@ -12,7 +12,9 @@ function Handicap({ handicapData }: HandicapProps) {
     <>
       <h2>
         Your Handicap:{" "}
-        {handicapData[handicapData.length - 1].handicap.toFixed(2)}
+        {handicapData.length > 0
+          ? handicapData[handicapData.length - 1].handicap.toFixed(2)
+          : "N/A"}
       </h2>
       <Col md={6}>
         {handicapData.length >= 2 ? (

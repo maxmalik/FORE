@@ -24,7 +24,10 @@ function Dashboard() {
     };
 
     const fetchUserRounds = async (roundIds: string[]): Promise<Round[]> => {
-      return await callGetRoundsApi(roundIds);
+      if (!roundIds || roundIds.length === 0) {
+        return [];
+      }
+      return await callGetRoundsApi(roundIds, true);
     };
 
     const fetchData = async (): Promise<void> => {
