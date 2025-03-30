@@ -1,8 +1,11 @@
+import { Course } from "./courses";
 import { getApiUrl } from "./utils";
 
 const API_URL = getApiUrl();
 
 export type ScorecardMode = "all-holes" | "front-and-back" | "total-score";
+
+export type RoundScorecard = Record<string, number>;
 
 export type Round = {
   id: string;
@@ -11,9 +14,10 @@ export type Round = {
   tee_box_index: number;
   caption: string;
   scorecard_mode: ScorecardMode;
-  scorecard: Record<string, Record<string, number>>;
+  scorecard: RoundScorecard;
   score_differential: number;
   date_posted: Date;
+  course?: Course;
 };
 
 export async function postRound(
@@ -53,12 +57,16 @@ export async function postRound(
   }
 }
 
-export async function callGetRoundsApi(roundIds: string[]): Promise<Round[]> {
+export async function callGetRoundsApi(
+  roundIds: string[],
+  retrieveCourseData: boolean
+): Promise<Round[]> {
   const endpoint: string = "rounds/";
 
   const params = new URLSearchParams();
 
   roundIds.forEach((roundId) => params.append("ids", roundId));
+  params.append("retrieve_course_data", retrieveCourseData.toString());
 
   const url: string = `${API_URL}/${endpoint}?${params.toString()}`;
 

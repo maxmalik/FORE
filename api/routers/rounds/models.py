@@ -41,4 +41,4 @@ class Round(BaseModel):
 
 
 class RoundGet(Round):
-    course_data: Optional[Course]
+    course: Optional[Course]  # Course data associated with the course_id
