@@ -2,6 +2,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorCollection
+from pymongo import UpdateOne
 
 from ...db import get_collection
 from .models import Course, SearchCourses

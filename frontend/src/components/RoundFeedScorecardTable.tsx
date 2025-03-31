@@ -13,11 +13,6 @@ interface RoundFeedScorecardTableProps {
   course: Course;
 }
 
-// Returns a list of numbers from 1 (inclusive) to n (inclusive)
-function range(n: number): number[] {
-  return Array.from({ length: n }, (_, i) => i + 1);
-}
-
 function RoundFeedScorecardTable({
   roundScorecard,
   scorecardMode,
@@ -36,9 +31,9 @@ function RoundFeedScorecardTable({
         <thead>
           <tr>
             <th className="align-middle">Hole</th>
-            {range(course.num_holes).map((holeNumber) => (
-              <th key={holeNumber} className="text-center align-middle">
-                {holeNumber}
+            {course.scorecard.map((hole: Hole) => (
+              <th key={hole.hole_number} className="text-center align-middle">
+                {hole.hole_number}
               </th>
             ))}
             <th className="text-center align-middle px-2">Total</th>
@@ -53,12 +48,7 @@ function RoundFeedScorecardTable({
                   {hole.par}
                 </td>
               ))}
-              <td className="text-center align-middle">
-                {course.scorecard.reduce(
-                  (acc: number, hole: Hole) => acc + hole.par,
-                  0
-                )}
-              </td>
+              <td className="text-center align-middle">{course.par}</td>
             </tr>
           )}
 
@@ -98,9 +88,9 @@ function RoundFeedScorecardTable({
           )}
           <tr className="table-active">
             <td className="align-middle">Score</td>
-            {range(course.num_holes).map((holeNumber) => (
-              <td key={holeNumber} className="text-center">
-                {roundScorecard[holeNumber.toString()]}
+            {course.scorecard.map((hole: Hole) => (
+              <td key={hole.hole_number} className="text-center">
+                {roundScorecard[hole.hole_number.toString()]}
               </td>
             ))}
             <td className="text-center align-middle">
@@ -142,9 +132,7 @@ function RoundFeedScorecardTable({
                   .slice(9, 18)
                   .reduce((acc, hole) => acc + hole.par, 0)}
               </td>
-              <td className="text-center align-middle">
-                {course.scorecard.reduce((acc, hole) => acc + hole.par, 0)}
-              </td>
+              <td className="text-center align-middle">{course.par}</td>
             </tr>
           )}
 
@@ -217,9 +205,7 @@ function RoundFeedScorecardTable({
           {course.tee_boxes.length > 0 && (
             <tr>
               <td className="align-middle">Par</td>
-              <td className="text-center align-middle">
-                {course.scorecard.reduce((acc, hole) => acc + hole.par, 0)}
-              </td>
+              <td className="text-center align-middle">{course.par}</td>
             </tr>
           )}
 

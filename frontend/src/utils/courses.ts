@@ -7,8 +7,8 @@ export type HoleTeeBox = {
 
 export type TeeBox = {
   tee: string;
-  slope: number;
-  handicap: number;
+  slope_rating: number;
+  course_rating: number;
   total_yards: number;
 };
 
@@ -32,6 +32,7 @@ export type Course = {
   length_format: string;
   likes: any[];
   name: string;
+  par: number | null;
   phone: string;
   scorecard: Array<Hole>;
   state: string;

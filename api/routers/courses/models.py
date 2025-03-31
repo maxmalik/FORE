@@ -12,8 +12,8 @@ class HoleTeeBox(BaseModel):
 
 class TeeBox(BaseModel):
     tee: str
-    slope: int
-    handicap: float
+    slope_rating: int
+    course_rating: float
     total_yards: int
 
 
@@ -36,6 +36,7 @@ class Course(BaseModel):
     num_holes: int
     length_format: str
     name: str
+    par: int | None
     phone: str
     rounds: list[PyObjectId]
     scorecard: list[CourseHole]

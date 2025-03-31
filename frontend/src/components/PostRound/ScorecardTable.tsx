@@ -3,7 +3,7 @@ import Form from "react-bootstrap/Form";
 import Table from "react-bootstrap/Table";
 import { MdOutlineEditNote } from "react-icons/md";
 
-import { Course } from "../../utils/courses";
+import { Course, Hole } from "../../utils/courses";
 import { ScorecardMode } from "../../utils/rounds";
 
 interface ScorecardTableProps {
@@ -13,11 +13,6 @@ interface ScorecardTableProps {
   scores: Record<string, string>;
   onScoreChange: (key: string, value: string) => void;
   openTeeBoxSelectionModal: () => void;
-}
-
-// Returns a list of numbers from 1 (inclusive) to n (inclusive)
-function range(n: number): number[] {
-  return Array.from({ length: n }, (_, i) => i + 1);
 }
 
 function ScorecardTable({
@@ -40,9 +35,9 @@ function ScorecardTable({
         <thead>
           <tr>
             <th className="align-middle">Hole</th>
-            {range(course.num_holes).map((holeNumber) => (
-              <th key={holeNumber} className="text-center align-middle">
-                {holeNumber}
+            {course.scorecard.map((hole: Hole) => (
+              <th key={hole.hole_number} className="text-center align-middle">
+                {hole.hole_number}
               </th>
             ))}
             <th className="text-center align-middle px-2">Total</th>
@@ -57,9 +52,7 @@ function ScorecardTable({
                   {hole.par}
                 </td>
               ))}
-              <td className="text-center align-middle">
-                {course.scorecard.reduce((acc, hole) => acc + hole.par, 0)}
-              </td>
+              <td className="text-center align-middle">{course.par}</td>
             </tr>
           )}
 
@@ -108,17 +101,17 @@ function ScorecardTable({
           )}
           <tr className="table-active">
             <td className="align-middle">Score</td>
-            {range(course.num_holes).map((holeNumber) => (
+            {course.scorecard.map((hole: Hole) => (
               <td
-                key={holeNumber}
+                key={hole.hole_number}
                 style={{ width: "40px" }}
                 className="text-center align-middle"
               >
                 <Form.Control
                   min="0"
-                  value={scores[holeNumber.toString()]}
+                  value={scores[hole.hole_number.toString()]}
                   onChange={(e) =>
-                    onScoreChange(holeNumber.toString(), e.target.value)
+                    onScoreChange(hole.hole_number.toString(), e.target.value)
                   }
                   className="p-1 text-center"
                 />
@@ -163,9 +156,7 @@ function ScorecardTable({
                   .slice(9, 18)
                   .reduce((acc, hole) => acc + hole.par, 0)}
               </td>
-              <td className="text-center align-middle">
-                {course.scorecard.reduce((acc, hole) => acc + hole.par, 0)}
-              </td>
+              <td className="text-center align-middle">{course.par}</td>
             </tr>
           )}
 
@@ -265,9 +256,7 @@ function ScorecardTable({
           {course.tee_boxes.length > 0 && (
             <tr>
               <td className="align-middle">Par</td>
-              <td className="text-center align-middle">
-                {course.scorecard.reduce((acc, hole) => acc + hole.par, 0)}
-              </td>
+              <td className="text-center align-middle">{course.par}</td>
             </tr>
           )}
 
@@ -319,9 +308,9 @@ function ScorecardTable({
       <thead>
         <tr>
           <th className="align-middle">Hole</th>
-          {range(course.num_holes).map((holeNumber) => (
-            <th key={holeNumber} className="text-center align-middle">
-              {holeNumber}
+          {course.scorecard.map((hole: Hole) => (
+            <th key={hole.hole_number} className="text-center align-middle">
+              {hole.hole_number}
             </th>
           ))}
           <th className="text-center align-middle px-2">Total</th>
@@ -336,9 +325,7 @@ function ScorecardTable({
                 {hole.par}
               </td>
             ))}
-            <td className="text-center align-middle">
-              {course.scorecard.reduce((acc, hole) => acc + hole.par, 0)}
-            </td>
+            <td className="text-center align-middle">{course.par}</td>
           </tr>
         )}
 
@@ -387,17 +374,17 @@ function ScorecardTable({
         )}
         <tr className="table-active">
           <td className="align-middle">Score</td>
-          {range(course.num_holes).map((holeNumber) => (
+          {course.scorecard.map((hole: Hole) => (
             <td
-              key={holeNumber}
+              key={hole.hole_number}
               style={{ width: "40px" }}
               className="text-center align-middle"
             >
               <Form.Control
                 min="0"
-                value={scores[holeNumber.toString()]}
+                value={scores[hole.hole_number.toString()]}
                 onChange={(e) =>
-                  onScoreChange(holeNumber.toString(), e.target.value)
+                  onScoreChange(hole.hole_number.toString(), e.target.value)
                 }
                 className="p-1 text-center"
               />

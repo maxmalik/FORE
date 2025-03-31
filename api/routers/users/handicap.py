@@ -42,14 +42,12 @@ def calculate_adjusted_gross_score(
     scorecard_mode: ScorecardModeEnum,
     player_handicap: float | None,
     course_scorecard: list[CourseHole],
+    course_par: int | None,
     slope_rating: float,
     course_rating: float,
 ):
 
-    if course_scorecard:
-        course_par = sum([hole.par for hole in course_scorecard])
-    else:
-        course_par = 72
+    course_par = course_par if course_par else 72
 
     if player_handicap:
         course_handicap = calculate_course_handicap(
@@ -100,14 +98,16 @@ def calculate_adjusted_gross_score(
 def get_slope_and_course_rating(tee_box_index: int | None, course: Course):
 
     if tee_box_index:
-        slope_rating = course.tee_boxes[tee_box_index].slope
-        course_rating = course.tee_boxes[tee_box_index].handicap
+        slope_rating = course.tee_boxes[tee_box_index].slope_rating
+        course_rating = course.tee_boxes[tee_box_index].course_rating
 
     else:
         # Use the average slope and course rating for all tee boxes
         if course.tee_boxes:
-            slope_rating = mean([tee_box.slope for tee_box in course.tee_boxes])
-            course_rating = mean([tee_box.handicap for tee_box in course.tee_boxes])
+            slope_rating = mean([tee_box.slope_rating for tee_box in course.tee_boxes])
+            course_rating = mean(
+                [tee_box.course_rating for tee_box in course.tee_boxes]
+            )
 
         # Default to standard values
         else:
@@ -132,6 +132,7 @@ def calculate_score_differential(
         scorecard_mode,
         player_handicap,
         course.scorecard,
+        course.par,
         slope_rating,
         course_rating,
     )
