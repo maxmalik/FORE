@@ -17,7 +17,7 @@ class ScorecardModeEnum(str, Enum):
     total_score = "total-score"
 
 
-class RoundPost(BaseModel):
+class PostRound(BaseModel):
     user_id: str
     course_id: str
     tee_box_index: Optional[int]

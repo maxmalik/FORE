@@ -9,25 +9,25 @@ from ...db import get_collection
 from ..courses.courses import Course, get_course
 from ..users.handicap import calculate_handicap, calculate_score_differential
 from ..users.users import User, get_user
-from .models import Round, RoundGet, RoundPost, RoundScorecard, ScorecardModeEnum
+from .models import PostRound, Round, RoundGet, RoundScorecard, ScorecardModeEnum
 
 rounds_router = APIRouter()
 
 
 async def verify_and_get_user(
-    round_post: RoundPost,
+    post_round: PostRound,
     users_collection: AsyncIOMotorCollection = Depends(get_collection("users")),
 ) -> User:
-    return await get_user(round_post.user_id, users_collection)
+    return await get_user(post_round.user_id, users_collection)
 
 
 async def verify_and_get_course(
-    round_post: RoundPost,
+    post_round: PostRound,
     courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
 ) -> Course:
-    course = await get_course(round_post.course_id, courses_collection)
+    course = await get_course(post_round.course_id, courses_collection)
 
-    tee_box_index = round_post.tee_box_index
+    tee_box_index = post_round.tee_box_index
 
     if tee_box_index is not None:
         if tee_box_index < 0 or tee_box_index >= len(course.tee_boxes):
@@ -85,7 +85,7 @@ def get_tee_box_name(tee_box_index: int | None) -> str | None:
     status_code=status.HTTP_201_CREATED,
 )
 async def post_round(
-    round_post: RoundPost,
+    post_round: PostRound,
     background_tasks: BackgroundTasks,
     users_collection: AsyncIOMotorCollection = Depends(get_collection("users")),
     courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
@@ -99,18 +99,17 @@ async def post_round(
 ) -> dict:
 
     validate_scorecard(
-        round_post.scorecard_mode, round_post.scorecard, course.num_holes
+        post_round.scorecard_mode, post_round.scorecard, course.num_holes
     )
 
-    if user.handicap_data:
-        current_user_handicap = user.handicap_data[-1].handicap
-    else:
-        current_user_handicap = None
+    current_user_handicap = (
+        user.handicap_data[-1].handicap if user.handicap_data else None
+    )
 
     score_differential = calculate_score_differential(
-        round_post.scorecard,
-        round_post.scorecard_mode,
-        round_post.tee_box_index,
+        post_round.scorecard,
+        post_round.scorecard_mode,
+        post_round.tee_box_index,
         course,
         current_user_handicap,
     )
@@ -118,12 +117,12 @@ async def post_round(
     date_posted = datetime.now(tz=timezone.utc)
 
     finalized_round = Round(
-        user_id=round_post.user_id,
-        course_id=round_post.course_id,
-        tee_box_index=round_post.tee_box_index,
-        caption=round_post.caption,
-        scorecard_mode=round_post.scorecard_mode,
-        scorecard=round_post.scorecard,
+        user_id=post_round.user_id,
+        course_id=post_round.course_id,
+        tee_box_index=post_round.tee_box_index,
+        caption=post_round.caption,
+        scorecard_mode=post_round.scorecard_mode,
+        scorecard=post_round.scorecard,
         score_differential=score_differential,
         date_posted=date_posted,
     ).model_dump(exclude=["id"])
@@ -168,7 +167,7 @@ async def update_user_after_post(
     if len(new_round_ids) >= 3:
         rounds = await get_rounds(new_round_ids, rounds_collection)
         new_handicap = calculate_handicap(
-            [round.score_differential for round in rounds]
+            [golf_round.score_differential for golf_round in rounds]
         )
 
         push_query["handicap_data"] = {
@@ -220,11 +219,11 @@ async def get_rounds(
     rounds = await rounds_collection.find({"_id": {"$in": object_ids}}).to_list()
 
     if retrieve_course_data:
-        for round in rounds:
+        for golf_round in rounds:
             course = await courses_collection.find_one(
-                {"_id": ObjectId(round["course_id"])}
+                {"_id": ObjectId(golf_round["course_id"])}
             )
             if course:
-                round["course"] = course
+                golf_round["course"] = course
 
-    return [RoundGet(**round) for round in rounds]
+    return [RoundGet(**golf_round) for golf_round in rounds]
