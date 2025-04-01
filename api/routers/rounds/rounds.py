@@ -6,10 +6,12 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, s
 from motor.motor_asyncio import AsyncIOMotorCollection
 
 from ...db import get_collection
+from ...utils import PyObjectId
 from ..courses.courses import Course, get_course
 from ..users.handicap import calculate_handicap, calculate_score_differential
+from ..users.models import HandicapData
 from ..users.users import User, get_user
-from .models import PostRound, Round, RoundGet, RoundScorecard, ScorecardModeEnum
+from .models import GetRound, PostRound, Round, RoundScorecard, ScorecardModeEnum
 
 rounds_router = APIRouter()
 
@@ -127,6 +129,10 @@ async def post_round(
         date_posted=date_posted,
     ).model_dump(exclude=["id"])
 
+    # Convert string IDs to ObjectId
+    finalized_round["user_id"] = ObjectId(finalized_round["user_id"])
+    finalized_round["course_id"] = ObjectId(finalized_round["course_id"])
+
     # Add the round to the rounds collection
     insert_round_result = await rounds_collection.insert_one(finalized_round)
 
@@ -134,7 +140,7 @@ async def post_round(
         update_user_after_post,
         user.id,
         user.rounds,
-        str(insert_round_result.inserted_id),
+        PyObjectId(insert_round_result.inserted_id),
         date_posted,
         users_collection,
         rounds_collection,
@@ -143,7 +149,7 @@ async def post_round(
     background_tasks.add_task(
         update_course_after_post,
         course.id,
-        str(insert_round_result.inserted_id),
+        PyObjectId(insert_round_result.inserted_id),
         courses_collection,
     )
 
@@ -152,9 +158,9 @@ async def post_round(
 
 # Update the user's rounds list and handicap data after they post a round
 async def update_user_after_post(
-    user_id: str,
-    user_round_ids: list[str],
-    inserted_round_id: str,
+    user_id: PyObjectId,
+    user_round_ids: list[PyObjectId],
+    inserted_round_id: PyObjectId,
     date_posted: datetime,
     users_collection: AsyncIOMotorCollection,
     rounds_collection: AsyncIOMotorCollection,
@@ -162,22 +168,20 @@ async def update_user_after_post(
 
     new_round_ids = user_round_ids + [inserted_round_id]
 
-    push_query = {"rounds": {"$each": [inserted_round_id]}}
+    push_query = {"rounds": {"$each": [ObjectId(inserted_round_id)]}}
 
+    # Calculate the new handicap if there are at least 3 scores (required by USGA)
     if len(new_round_ids) >= 3:
         rounds = await get_rounds(new_round_ids, rounds_collection)
         new_handicap = calculate_handicap(
             [golf_round.score_differential for golf_round in rounds]
         )
 
-        push_query["handicap_data"] = {
-            "$each": [
-                {
-                    "handicap": new_handicap,
-                    "date": date_posted,
-                }
-            ]
-        }
+        handicap_data = HandicapData(
+            handicap=new_handicap, date=date_posted
+        ).model_dump()
+
+        push_query["handicap_data"] = {"$each": [handicap_data]}
 
     await users_collection.update_one(
         {"_id": ObjectId(user_id)},
@@ -186,44 +190,57 @@ async def update_user_after_post(
 
 
 async def update_course_after_post(
-    course_id: str,
-    inserted_round_id: str,
+    course_id: PyObjectId,
+    inserted_round_id: PyObjectId,
     courses_collection: AsyncIOMotorCollection,
 ) -> None:
     await courses_collection.update_one(
         {"_id": ObjectId(course_id)},
-        {"$push": {"rounds": {"$each": [inserted_round_id]}}},
+        {"$push": {"rounds": {"$each": [ObjectId(inserted_round_id)]}}},
     )
 
 
 @rounds_router.get(
     "/",
     description="Get multiple rounds given their IDs",
-    response_model=list[RoundGet],
+    response_model=list[GetRound],
     response_model_by_alias=False,
 )
 async def get_rounds(
-    ids: list[str] = Query(...),
+    ids: list[PyObjectId] = Query(...),
     retrieve_course_data: bool = Query(
-        False, description="Whether to retrieve course data for the rounds's courses"
+        False, description="Whether to retrieve course data for the rounds' courses"
     ),
     rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),
     courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
-) -> list[RoundGet]:
+) -> list[GetRound]:
 
+    # Convert string/PyObjectId IDs to ObjectId
     try:
-        object_ids = [ObjectId(id) if isinstance(id, str) else id for id in ids]
+        object_ids = [ObjectId(id) for id in ids]
     except InvalidId as exception:
         raise HTTPException(status_code=422, detail="Invalid Round ID") from exception
 
-    rounds = await rounds_collection.find({"_id": {"$in": object_ids}}).to_list()
+    # Fetch rounds
+    rounds = await rounds_collection.find({"_id": {"$in": object_ids}}).to_list(None)
 
+    # Retrieve course data if requested
     if retrieve_course_data:
-        for golf_round in rounds:
-            course = await courses_collection.find_one(
-                {"_id": ObjectId(golf_round["course_id"])}
-            )
-            if course:
-                golf_round["course"] = course
+        course_object_ids: set[ObjectId] = {
+            golf_round["course_id"] for golf_round in rounds
+        }
 
-    return [RoundGet(**golf_round) for golf_round in rounds]
+        print(f"course ids: {course_object_ids}")
+
+        courses = {}
+        for course in await courses_collection.find(
+            {"_id": {"$in": list(course_object_ids)}}
+        ).to_list():
+            courses[course["_id"]] = course
+
+        print(f"courses: {courses}")
+
+        for golf_round in rounds:
+            golf_round["course"] = courses[golf_round["course_id"]]
+
+    return [GetRound(**golf_round) for golf_round in rounds]

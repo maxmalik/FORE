@@ -20,7 +20,10 @@ function Handicap({ handicapData }: HandicapProps) {
         {handicapData.length >= 2 ? (
           <HandicapChart handicapData={handicapData} />
         ) : (
-          <p>Post more rounds to have a proper handicap chart</p>
+          <p>
+            Post {3 - handicapData.length} more rounds to show the handicap
+            chart!
+          </p>
         )}
       </Col>
     </>

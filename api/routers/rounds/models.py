@@ -18,8 +18,8 @@ class ScorecardModeEnum(str, Enum):
 
 
 class PostRound(BaseModel):
-    user_id: str
-    course_id: str
+    user_id: PyObjectId
+    course_id: PyObjectId
     tee_box_index: Optional[int]
     caption: Optional[str] = None
     scorecard_mode: ScorecardModeEnum
@@ -28,8 +28,8 @@ class PostRound(BaseModel):
 
 class Round(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    user_id: str
-    course_id: str
+    user_id: PyObjectId
+    course_id: PyObjectId
     tee_box_index: Optional[
         int
     ]  # Index of the selected tee box in the course's tee_boxes array
@@ -40,5 +40,5 @@ class Round(BaseModel):
     date_posted: datetime
 
 
-class RoundGet(Round):
+class GetRound(Round):
     course: Optional[Course]  # Course data associated with the course_id

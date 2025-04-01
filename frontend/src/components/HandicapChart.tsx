@@ -16,13 +16,11 @@ interface HandicapChartProps {
   handicapData: HandicapData[];
 }
 
-// Format timestamps into "MM/DD HH:mm"
+// Format timestamps into "MM/DD"
 const formatTime = (time: number) => {
   return new Date(time).toLocaleString([], {
     month: "2-digit",
     day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 };
 

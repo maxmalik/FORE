@@ -5,6 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorCollection
 from pymongo import UpdateOne
 
 from ...db import get_collection
+from ...utils import PyObjectId
 from .models import Course, SearchCourses
 
 courses_router = APIRouter()
@@ -23,18 +24,14 @@ async def search_courses(
 
     query = {"$text": {"$search": f'"{course_search.name}"'}}
 
+    # Return first 20 results
     results = await courses_collection.find(query).to_list(length=20)
-
-    # Ensure `_id` is converted to a string
-    for course in results:
-        if "_id" in course:
-            course["_id"] = str(course["_id"])
 
     return results
 
 
 async def get_course(
-    course_id: str,
+    course_id: PyObjectId,
     courses_collection: AsyncIOMotorCollection,
 ) -> Course:
 
@@ -52,10 +49,13 @@ async def get_course(
 
 
 @courses_router.get(
-    "/{course_id}", response_model=Course, description="Get a course by ID"
+    "/{course_id}",
+    response_model=Course,
+    description="Get a course by ID",
+    response_model_by_alias=False,
 )
 async def get_course_api(
-    course_id: str,
+    course_id: PyObjectId,
     courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
 ):
     return await get_course(ObjectId(course_id), courses_collection)
