@@ -172,7 +172,11 @@ async def update_user_after_post(
 
     # Calculate the new handicap if there are at least 3 scores (required by USGA)
     if len(new_round_ids) >= 3:
-        rounds = await get_rounds(new_round_ids, rounds_collection)
+        rounds = await get_rounds(
+            ids=new_round_ids,
+            retrieve_course_data=False,
+            rounds_collection=rounds_collection,
+        )
         new_handicap = calculate_handicap(
             [golf_round.score_differential for golf_round in rounds]
         )
@@ -230,15 +234,11 @@ async def get_rounds(
             golf_round["course_id"] for golf_round in rounds
         }
 
-        print(f"course ids: {course_object_ids}")
-
         courses = {}
         for course in await courses_collection.find(
             {"_id": {"$in": list(course_object_ids)}}
         ).to_list():
             courses[course["_id"]] = course
-
-        print(f"courses: {courses}")
 
         for golf_round in rounds:
             golf_round["course"] = courses[golf_round["course_id"]]
