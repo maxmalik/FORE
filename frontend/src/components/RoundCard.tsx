@@ -9,15 +9,18 @@ interface RoundCardProps {
 
 function RoundCard({ round }: RoundCardProps) {
   return (
-    <Card>
-      <Card.Header>
-        <Card.Text>
-          You played {round.course!.name} on{" "}
-          {new Date(round.date_posted).toLocaleDateString()}
-        </Card.Text>
-      </Card.Header>
+    <Card className="my-3">
       <Card.Body>
-        <Card.Text>Scorecard</Card.Text>
+        <Card.Title>
+          You played <strong>{round.course!.name}</strong> on{" "}
+          {new Date(round.date_posted).toLocaleDateString()}
+        </Card.Title>
+        {round.caption && (
+          <p>
+            <strong>Caption:</strong> {round.caption}
+          </p>
+        )}
+        <Card.Text as="h6">Scorecard</Card.Text>
 
         <RoundFeedScorecardTable
           roundScorecard={round.scorecard}

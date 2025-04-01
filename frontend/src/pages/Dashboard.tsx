@@ -51,7 +51,7 @@ function Dashboard() {
         <h1 className="mb-3">Dashboard</h1>
         {handicapData && (
           <>
-            <Handicap handicapData={handicapData} />{" "}
+            <Handicap handicapData={handicapData} numRounds={rounds.length} />{" "}
             <RoundsFeed rounds={rounds} />
           </>
         )}

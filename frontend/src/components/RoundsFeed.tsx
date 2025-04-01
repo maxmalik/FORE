@@ -11,11 +11,12 @@ function RoundsFeed({ rounds }: RoundsFeedProps) {
   }
 
   return (
-    <>
+    <div className="my-3">
+      <h4>Your Rounds</h4>
       {rounds.map((round) => (
         <RoundCard key={round.id} round={round} />
       ))}
-    </>
+    </div>
   );
 }
 
