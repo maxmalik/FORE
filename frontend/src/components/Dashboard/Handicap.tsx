@@ -1,6 +1,6 @@
 import Col from "react-bootstrap/Col";
 
-import { callGetUserApi, HandicapData } from "../utils/users/users";
+import { callGetUserApi, HandicapData } from "../../utils/users/users";
 import HandicapChart from "./HandicapChart";
 
 interface HandicapProps {

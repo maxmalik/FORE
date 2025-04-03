@@ -1,10 +1,7 @@
-import Button from "react-bootstrap/Button";
-import Form from "react-bootstrap/Form";
 import Table from "react-bootstrap/Table";
-import { MdOutlineEditNote } from "react-icons/md";
 
-import { Course, Hole } from "../utils/courses";
-import { RoundScorecard, ScorecardMode } from "../utils/rounds";
+import { Course, Hole } from "../../utils/courses";
+import { RoundScorecard, ScorecardMode } from "../../utils/rounds";
 
 interface RoundFeedScorecardTableProps {
   roundScorecard: RoundScorecard;
@@ -19,7 +16,7 @@ function RoundFeedScorecardTable({
   teeBoxIndex,
   course,
 }: RoundFeedScorecardTableProps) {
-  const teeBoxDisplayName = course?.tee_boxes?.[teeBoxIndex]?.tee
+  const teeBoxDisplayName = course.tee_boxes?.[teeBoxIndex]?.tee
     ? `${course.tee_boxes[teeBoxIndex].tee} ${
         course.length_format === "Y" ? "(Yards)" : "(Meters)"
       }`

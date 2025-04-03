@@ -1,7 +1,5 @@
-import React from "react";
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -10,7 +8,7 @@ import {
   YAxis,
 } from "recharts";
 
-import { HandicapData } from "../utils/users/users";
+import { HandicapData } from "../../utils/users/users";
 
 interface HandicapChartProps {
   handicapData: HandicapData[];

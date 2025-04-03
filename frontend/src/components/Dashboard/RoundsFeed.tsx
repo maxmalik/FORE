@@ -1,4 +1,4 @@
-import { Round } from "../utils/rounds";
+import { Round } from "../../utils/rounds";
 import RoundCard from "./RoundCard";
 
 interface RoundsFeedProps {

@@ -1,6 +1,6 @@
 import Card from "react-bootstrap/Card";
 
-import { Round } from "../utils/rounds";
+import { Round } from "../../utils/rounds";
 import RoundFeedScorecardTable from "./RoundFeedScorecardTable";
 
 interface RoundCardProps {

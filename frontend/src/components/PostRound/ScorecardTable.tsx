@@ -23,7 +23,7 @@ function ScorecardTable({
   onScoreChange,
   openTeeBoxSelectionModal,
 }: ScorecardTableProps) {
-  const teeBoxDisplayName = course?.tee_boxes?.[teeBoxIndex]?.tee
+  const teeBoxDisplayName = course.tee_boxes?.[teeBoxIndex]?.tee
     ? `${course.tee_boxes[teeBoxIndex].tee} ${
         course.length_format === "Y" ? "(Yards)" : "(Meters)"
       }`

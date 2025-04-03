@@ -92,7 +92,7 @@ function Login() {
     // Save the user's data (log them in) and redirect to main page
     const user = responseBody as User;
     localStorage.setItem("userData", JSON.stringify(user));
-    navigate("/main");
+    navigate("/dashboard");
   }
 
   return (

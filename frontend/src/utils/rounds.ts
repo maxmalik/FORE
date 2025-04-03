@@ -59,7 +59,8 @@ export async function postRound(
 
 export async function callGetRoundsApi(
   roundIds: string[],
-  retrieveCourseData: boolean
+  retrieveCourseData: boolean,
+  order: "asc" | "desc" = "desc"
 ): Promise<Round[]> {
   const endpoint: string = "rounds/";
 
@@ -67,6 +68,7 @@ export async function callGetRoundsApi(
 
   roundIds.forEach((roundId) => params.append("ids", roundId));
   params.append("retrieve_course_data", retrieveCourseData.toString());
+  params.append("order", order);
 
   const url: string = `${API_URL}/${endpoint}?${params.toString()}`;
 

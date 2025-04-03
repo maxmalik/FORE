@@ -76,9 +76,10 @@ def validate_scorecard(
                 status_code=422, detail="Total not provided in scorecard"
             )
 
-
-def get_tee_box_name(tee_box_index: int | None) -> str | None:
-    return f"teeBox{tee_box_index+1}" if tee_box_index is not None else None
+    else:
+        raise HTTPException(
+            status_code=422, detail=f"Invalid scorecard mode {scorecard_mode}"
+        )
 
 
 @rounds_router.post(
@@ -119,8 +120,8 @@ async def post_round(
     date_posted = datetime.now(tz=timezone.utc)
 
     finalized_round = Round(
-        user_id=post_round.user_id,
-        course_id=post_round.course_id,
+        user_id=user.id,
+        course_id=course.id,
         tee_box_index=post_round.tee_box_index,
         caption=post_round.caption,
         scorecard_mode=post_round.scorecard_mode,
@@ -130,8 +131,8 @@ async def post_round(
     ).model_dump(exclude=["id"])
 
     # Convert string IDs to ObjectId
-    finalized_round["user_id"] = ObjectId(finalized_round["user_id"])
-    finalized_round["course_id"] = ObjectId(finalized_round["course_id"])
+    finalized_round["user_id"] = ObjectId(user.id)
+    finalized_round["course_id"] = ObjectId(course.id)
 
     # Add the round to the rounds collection
     insert_round_result = await rounds_collection.insert_one(finalized_round)
@@ -215,6 +216,9 @@ async def get_rounds(
     retrieve_course_data: bool = Query(
         False, description="Whether to retrieve course data for the rounds' courses"
     ),
+    order: str = Query(
+        None, regex="^(asc|desc)$", description="Sort order for the rounds"
+    ),
     rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),
     courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
 ) -> list[GetRound]:
@@ -225,8 +229,19 @@ async def get_rounds(
     except InvalidId as exception:
         raise HTTPException(status_code=422, detail="Invalid Round ID") from exception
 
+    if order == "asc":
+        direction = 1
+    elif order == "desc":
+        direction = -1
+    else:
+        direction = None
+
     # Fetch rounds
-    rounds = await rounds_collection.find({"_id": {"$in": object_ids}}).to_list(None)
+    rounds = (
+        await rounds_collection.find({"_id": {"$in": object_ids}})
+        .sort("date_posted", direction)
+        .to_list(None)
+    )
 
     # Retrieve course data if requested
     if retrieve_course_data:

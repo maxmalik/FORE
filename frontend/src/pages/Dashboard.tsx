@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import Container from "react-bootstrap/Container";
 
+import Handicap from "../components/Dashboard/Handicap";
+import RoundsFeed from "../components/Dashboard/RoundsFeed";
 import ForeNavbar from "../components/ForeNavbar";
-import Handicap from "../components/Handicap";
-import RoundsFeed from "../components/RoundsFeed";
 import { callGetRoundsApi, Round } from "../utils/rounds";
 import {
   callGetUserApi,

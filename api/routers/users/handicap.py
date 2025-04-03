@@ -102,15 +102,16 @@ def get_slope_and_course_rating(tee_box_index: int | None, course: Course):
         course_rating = course.tee_boxes[tee_box_index].course_rating
 
     else:
-        # Use the average slope and course rating for all tee boxes
         if course.tee_boxes:
+            # Use the average slope and course rating for all tee boxes
             slope_rating = mean([tee_box.slope_rating for tee_box in course.tee_boxes])
             course_rating = mean(
                 [tee_box.course_rating for tee_box in course.tee_boxes]
             )
 
-        # Default to standard values
+        # If course has no tee box data
         else:
+            # Default to standard values
             slope_rating = 113
             course_rating = 72
 
