@@ -40,6 +40,13 @@ async def verify_and_get_course(
     return course
 
 
+async def verify_and_get_round(
+    round_id: PyObjectId,
+    rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),
+) -> User:
+    return await get_round(round_id, rounds_collection)
+
+
 # Raises an error if there is an issue with the scorecard
 def validate_scorecard(
     scorecard_mode: ScorecardModeEnum, scorecard: dict[str, int], course_num_holes: int
@@ -205,6 +212,24 @@ async def update_course_after_post(
     )
 
 
+async def get_round(
+    round_id: PyObjectId,
+    rounds_collection: AsyncIOMotorCollection,
+) -> Round:
+
+    try:
+        course_object_id = ObjectId(round_id)
+    except InvalidId as exception:
+        raise HTTPException(status_code=422, detail="Invalid Round ID") from exception
+
+    round = await rounds_collection.find_one({"_id": course_object_id})
+
+    if round is None:
+        raise HTTPException(status_code=404, detail="Round not found")
+
+    return Round(**round)
+
+
 @rounds_router.get(
     "/",
     description="Get multiple rounds given their IDs",
@@ -259,3 +284,84 @@ async def get_rounds(
             golf_round["course"] = courses[golf_round["course_id"]]
 
     return [GetRound(**golf_round) for golf_round in rounds]
+
+
+@rounds_router.put(
+    "/{round_id}",
+    response_description="Update a round",
+    response_model=Round,
+)
+async def update_round(
+    round_id: str,
+    update_round: PostRound,
+    users_collection: AsyncIOMotorCollection = Depends(get_collection("users")),
+    courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
+    rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),
+    user: User = Depends(
+        verify_and_get_user
+    ),  # Ensure the user ID provided actually exists
+    course: Course = Depends(
+        verify_and_get_course
+    ),  # Ensure the course ID provided actually exists
+    round: Round = Depends(
+        verify_and_get_round
+    ),  # Ensure the round ID provided actually exists
+):
+    validate_scorecard(
+        update_round.scorecard_mode, update_round.scorecard, course.num_holes
+    )
+
+    # Get the user's handicap just before the original round was posted
+    current_user_handicap = None
+    for index, handicap_data in enumerate(user.handicap_data):
+        if handicap_data.date == round.date_posted:
+            if index - 1 >= 0:
+                current_user_handicap = user.handicap_data[index - 1].handicap
+            break
+
+    score_differential = calculate_score_differential(
+        update_round.scorecard,
+        update_round.scorecard_mode,
+        update_round.tee_box_index,
+        course,
+        current_user_handicap,
+    )
+
+    updated_round = Round(
+        id=round.id,
+        user_id=user.id,
+        course_id=course.id,
+        tee_box_index=update_round.tee_box_index,
+        caption=update_round.caption,
+        scorecard_mode=update_round.scorecard_mode,
+        scorecard=update_round.scorecard,
+        score_differential=score_differential,
+        date_posted=round.date_posted,
+    ).model_dump(by_alias=True)
+
+    updated_round["_id"] = ObjectId(round.id)
+    updated_round["user_id"] = ObjectId(user.id)
+    updated_round["course_id"] = ObjectId(course.id)
+
+    updated_round_result = await rounds_collection.replace_one(
+        {"_id": updated_round["_id"]}, updated_round
+    )
+
+    # UPDATE USER AND COURSE DATA
+
+
+async def update_user_after_update(
+    user_id: PyObjectId,
+    user_round_ids: list[PyObjectId],
+    user_handicap_data: list[HandicapData],
+    updated_round_date: datetime,
+    rounds_collection: AsyncIOMotorCollection,
+):
+
+    rounds = await get_rounds(user_round_ids, True, "asc", rounds_collection)
+
+    for handicap_data in user_handicap_data:
+        if handicap_data.date < updated_round_date:
+            continue
+
+        rounds_to_include = [r for r in rounds if r.date_posted <= handicap_data.date]
