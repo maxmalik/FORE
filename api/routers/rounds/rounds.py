@@ -286,6 +286,17 @@ async def get_rounds(
     return [GetRound(**golf_round) for golf_round in rounds]
 
 
+def get_previous_handicap(
+    handicap_data: HandicapData, round_date: datetime
+) -> float | None:
+    for index, data in enumerate(handicap_data):
+        if data.date == round_date:
+            if index - 1 >= 0:
+                return handicap_data[index - 1].handicap
+            break
+    return None
+
+
 @rounds_router.put(
     "/{round_id}",
     response_description="Update a round",
@@ -294,6 +305,7 @@ async def get_rounds(
 async def update_round(
     round_id: str,
     update_round: PostRound,
+    background_tasks: BackgroundTasks,
     users_collection: AsyncIOMotorCollection = Depends(get_collection("users")),
     courses_collection: AsyncIOMotorCollection = Depends(get_collection("courses")),
     rounds_collection: AsyncIOMotorCollection = Depends(get_collection("rounds")),
@@ -312,12 +324,7 @@ async def update_round(
     )
 
     # Get the user's handicap just before the original round was posted
-    current_user_handicap = None
-    for index, handicap_data in enumerate(user.handicap_data):
-        if handicap_data.date == round.date_posted:
-            if index - 1 >= 0:
-                current_user_handicap = user.handicap_data[index - 1].handicap
-            break
+    current_user_handicap = get_previous_handicap(user.handicap_data, round.date_posted)
 
     score_differential = calculate_score_differential(
         update_round.scorecard,
@@ -348,20 +355,83 @@ async def update_round(
     )
 
     # UPDATE USER AND COURSE DATA
+    background_tasks.add_task(
+        update_user_and_rounds_after_update,
+        user.id,
+        user.rounds,
+        user.handicap_data,
+        round.date_posted,
+        users_collection,
+        rounds_collection,
+    )
 
 
-async def update_user_after_update(
+async def update_user_and_rounds_after_update(
     user_id: PyObjectId,
     user_round_ids: list[PyObjectId],
     user_handicap_data: list[HandicapData],
     updated_round_date: datetime,
+    users_collection: AsyncIOMotorCollection,
     rounds_collection: AsyncIOMotorCollection,
-):
+) -> None:
 
     rounds = await get_rounds(user_round_ids, True, "asc", rounds_collection)
 
-    for handicap_data in user_handicap_data:
-        if handicap_data.date < updated_round_date:
+    # For rounds posted after the round just updated,
+    #   update the score differentials then handicap data at the corresponding date
+    for i, golf_round in enumerate(rounds):
+        if golf_round.date_posted < updated_round_date:
             continue
 
-        rounds_to_include = [r for r in rounds if r.date_posted <= handicap_data.date]
+        # Don't recompute the score differential for the round that was just updated
+        #   but do it for all rounds after
+        if golf_round.date_posted > updated_round_date:
+
+            # Recompute the score differential for the round
+            previous_handicap = get_previous_handicap(
+                user_handicap_data, golf_round.date_posted
+            )
+            new_score_differential = calculate_score_differential(
+                golf_round.scorecard,
+                golf_round.scorecard_mode,
+                golf_round.tee_box_index,
+                golf_round.course,
+                previous_handicap,
+            )
+
+            golf_round.score_differential = new_score_differential
+
+            update_round_result = await rounds_collection.update_one(
+                {"_id": ObjectId(golf_round.id)},
+                {
+                    "$set": {
+                        "score_differential": new_score_differential,
+                    }
+                },
+            )
+
+        # With the score differential just computed, calculate the new handicap
+        if golf_round.date_posted >= updated_round_date:
+
+            # Update the handicap data for the user
+            # Include all rounds before the current round
+            score_differentials_to_include = [
+                r.score_differential for r in rounds[: i + 1]
+            ]
+
+            new_handicap = calculate_handicap(score_differentials_to_include)
+
+            # Set the user's handicap at the date of the current round
+            for handicap_data in user_handicap_data:
+                if handicap_data.date == golf_round.date_posted:
+                    handicap_data.handicap = new_handicap
+                    break
+
+    update_user_result = await users_collection.update_one(
+        {"_id": ObjectId(user_id)},
+        {
+            "$set": {
+                "handicap_data": user_handicap_data,
+            }
+        },
+    )
